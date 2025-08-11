@@ -1,0 +1,2702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Salary & OT Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Added Flatpickr CSS for the new date picker -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- Added Flatpickr JS for the new date picker -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <style>
+    :root {
+      --bg-primary: #1a1a2e;
+      --bg-secondary: #161625;
+      --card: #24243e;
+      --card-hover: #2a2a4a;
+      --muted: #8f8f9e;
+      --text: #e0e0eb;
+      --accent: #ff79c6;
+      --accent-hover: #ff92d4;
+      --success: #50fa7b;
+      --warning: #f1fa8c;
+      --danger: #ff5555;
+      --border: #3a3a5a;
+      --border-light: #4a4a6a;
+      --shadow: 0 10px 30px rgba(0,0,0,.3);
+      --shadow-light: 0 4px 12px rgba(0,0,0,.15);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --transition: all 0.3s ease;
+    }
+    
+    * { 
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+    
+    html, body { height: 100% }
+    body {
+      margin: 0; 
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+      color: var(--text);
+      line-height: 1.6;
+    }
+    
+    .wrap { 
+      max-width: 1600px; 
+      margin: 32px auto; 
+      padding: 0 24px;
+      animation: fadeIn 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    header { 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      gap: 20px; 
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    h1 { 
+      font-size: 36px; 
+      font-weight: 700;
+      margin: 0;
+      background: linear-gradient(135deg, var(--accent), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .card { 
+      background: var(--card); 
+      border: 1px solid var(--border); 
+      border-radius: var(--radius); 
+      box-shadow: var(--shadow-light);
+      transition: var(--transition);
+      backdrop-filter: blur(10px);
+      background: rgba(36, 36, 62, 0.7);
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 24px rgba(0,0,0,.2);
+      border-color: var(--border-light);
+    }
+    
+    .panel { padding: 28px }
+    
+    .grid { display: grid; gap: 24px }
+    .grid-2 { grid-template-columns: 1fr 1fr }
+    .grid-3 { grid-template-columns: repeat(3, 1fr) }
+    .grid-4 { 
+      grid-template-columns: repeat(4, 1fr);
+      align-items: end; /* This will align items to the bottom */
+    }
+    
+    @media (max-width: 1200px) { .grid-4 { grid-template-columns: repeat(2, 1fr) } }
+    @media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr } }
+    
+    label { 
+      font-size: 14px; 
+      color: var(--muted); 
+      display: block; 
+      margin-bottom: 8px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    input, select { 
+      width: 100%; 
+      padding: 12px 16px; 
+      border-radius: var(--radius-sm); 
+      border: 1px solid var(--border); 
+      background: rgba(22, 22, 37, 0.8); 
+      color: var(--text); 
+      outline: none;
+      transition: var(--transition);
+      font-size: 14px;
+      font-family: 'Poppins', sans-serif;
+    }
+    
+    input[type="number"] { appearance: textfield }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0 }
+    
+    input:focus, select:focus { 
+      border-color: var(--accent); 
+      box-shadow: 0 0 0 4px rgba(255, 121, 198, 0.2);
+      background: rgba(22, 22, 37, 0.95);
+    }
+    
+    .row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap }
+    
+    .btn { 
+      background: var(--card-hover); 
+      color: var(--text); 
+      padding: 12px 20px; 
+      border-radius: var(--radius-sm); 
+      border: 1px solid var(--border); 
+      cursor: pointer;
+      transition: var(--transition);
+      font-weight: 600;
+      font-size: 14px;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .btn:hover { 
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg-primary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(255, 121, 198, 0.2);
+    }
+    
+    .btn.primary { 
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      color: var(--bg-primary); 
+      border-color: transparent;
+    }
+    
+    .btn.primary:hover {
+      box-shadow: 0 8px 16px rgba(255, 121, 198, 0.3);
+    }
+    
+    .btn.ghost { 
+        background: transparent; 
+        border-color: var(--border);
+        color: var(--muted);
+    }
+    .btn.ghost:hover { 
+        background: var(--card-hover);
+        color: var(--text);
+        border-color: var(--border-light);
+    }
+    
+    .btn.success {
+      background: var(--success);
+      color: var(--bg-primary);
+      border-color: transparent;
+    }
+    
+    table { 
+      width: 100%; 
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    
+    th, td { 
+      padding: 16px; 
+      border-bottom: 1px solid var(--border); 
+      text-align: left;
+    }
+    
+    #otTable tbody td {
+        vertical-align: middle;
+    }
+    
+    th { 
+      color: var(--muted); 
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      background: rgba(22, 22, 37, 0.5);
+      position: sticky;
+      top: 0;
+    }
+    
+    tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+    tbody tr:hover {
+      background: rgba(42, 42, 74, 0.5);
+    }
+    
+    tfoot td { 
+      font-weight: 700;
+      background: rgba(22, 22, 37, 0.3);
+      border-top: 2px solid var(--border-light);
+    }
+    
+    .pill { 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 8px; 
+      padding: 8px 16px; 
+      border: 1px solid var(--border); 
+      border-radius: 999px; 
+      color: var(--muted);
+      background: var(--bg-secondary);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    
+    .stat { 
+      display: flex;
+      flex-direction: column;
+      gap: 8px; 
+      padding: 24px; 
+      border-radius: var(--radius); 
+      border: 1px solid var(--border); 
+      background: linear-gradient(145deg, var(--card), var(--bg-secondary));
+      transition: var(--transition);
+    }
+    
+    .stat:hover {
+      border-color: var(--border-light);
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-light);
+    }
+    
+    .stat .value { 
+      font-size: 28px; 
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .stat .value .currency {
+        font-size: 18px;
+        font-weight: 500;
+        color: var(--muted);
+    }
+    
+    .stat .label {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .muted { color: var(--muted) }
+    .split { display: flex; gap: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap }
+    .small { font-size: 12px }
+    
+    .section-title {
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0;
+      color: var(--text);
+    }
+    
+    .table-container {
+      overflow: auto;
+      margin-top: 24px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: rgba(22, 22, 37, 0.3);
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 250px;
+      margin-top: 24px;
+    }
+    
+    .loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    
+    .success-message {
+      background: rgba(80, 250, 123, 0.1);
+      border: 1px solid rgba(80, 250, 123, 0.3);
+      color: var(--success);
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      margin-top: 16px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .footer-tip {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 20px;
+      border-radius: var(--radius);
+      margin-top: 32px;
+      text-align: center;
+    }
+    
+    /* Smart Calculator Specific Styles */
+    .tabs {
+      display: flex;
+      margin-bottom: 24px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+      border: 1px solid var(--border);
+    }
+    
+    .tab {
+      flex: 1;
+      padding: 12px 20px;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      transition: var(--transition);
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .tab.active {
+      color: var(--bg-primary);
+      background: var(--accent);
+      box-shadow: 0 4px 10px rgba(255, 121, 198, 0.25);
+    }
+    
+    .tab:hover:not(.active) {
+      color: var(--text);
+      background: var(--card-hover);
+    }
+    
+    .tab-content {
+      display: none;
+      animation: tabFadeIn 0.5s ease-out;
+    }
+    
+    @keyframes tabFadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+    
+    .smart-form {
+      display: grid;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    
+    .form-section {
+      background: rgba(22, 22, 37, 0.4);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    
+    .form-section h4 {
+      color: var(--text);
+      margin-bottom: 16px;
+      font-size: 18px;
+      font-weight: 600;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 16px;
+    }
+
+    .form-row-custom-pattern {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr) 1.5fr auto;
+        gap: 12px;
+        align-items: end;
+    }
+    
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 28px;
+    }
+    
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--border);
+      transition: .4s;
+      border-radius: 28px;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+      background-color: var(--accent);
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+    
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .toggle-label {
+      color: var(--text);
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    .holiday-checklist {
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(22, 22, 37, 0.8);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    
+    .holiday-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .holiday-item:last-child {
+      border-bottom: none;
+    }
+    
+    .holiday-checkbox-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 4px;
+      background: rgba(36, 36, 62, 0.3);
+      font-size: 14px;
+      font-weight: 500;
+      transition: background-color 0.2s ease;
+    }
+    
+    .holiday-checkbox-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    
+    .holiday-checkbox-item label {
+      flex-grow: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      margin: 0;
+    }
+    
+    .holiday-checkbox-item .date {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 400;
+    }
+    
+    .holiday-checkbox-item input[type="checkbox"] {
+      margin-left: 12px;
+      transform: scale(1.2);
+      accent-color: var(--accent);
+      width: auto;
+      padding: 0;
+    }
+    
+    .results-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .summary-item {
+      background: linear-gradient(135deg, rgba(255, 121, 198, 0.1), rgba(80, 250, 123, 0.1));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .summary-item h4 {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .summary-item .value {
+      color: var(--accent);
+      font-size: 28px;
+      font-weight: 700;
+    }
+    
+    .overtime-type {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    
+    .ot-weekend { background: rgba(255, 121, 198, 0.2); color: var(--accent); }
+    .ot-weekday { background: rgba(80, 250, 123, 0.2); color: var(--success); }
+    .ot-holiday { background: rgba(241, 250, 140, 0.2); color: var(--warning); }
+    .ot-restday { background: rgba(255, 85, 85, 0.2); color: var(--danger); }
+    
+    /* Custom Flatpickr Theme */
+    .flatpickr-calendar {
+      background: var(--card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow);
+      color: var(--text);
+      font-family: 'Poppins', sans-serif;
+    }
+    .flatpickr-months .flatpickr-month {
+      color: var(--text);
+      fill: var(--text);
+      font-weight: 600;
+    }
+    .flatpickr-months .flatpickr-prev-month,
+    .flatpickr-months .flatpickr-next-month {
+      color: var(--muted);
+      fill: var(--muted);
+      transition: var(--transition);
+    }
+    .flatpickr-months .flatpickr-prev-month:hover,
+    .flatpickr-months .flatpickr-next-month:hover {
+      color: var(--accent);
+      fill: var(--accent);
+    }
+    span.flatpickr-weekday {
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .flatpickr-day {
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      transition: var(--transition);
+    }
+    .flatpickr-day:hover, .flatpickr-day:focus {
+      background: var(--card-hover);
+      border-color: var(--card-hover);
+      color: var(--text);
+    }
+    .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange,
+    .flatpickr-day.selected:focus, .flatpickr-day.startRange:focus, .flatpickr-day.endRange:focus,
+    .flatpickr-day.selected:hover, .flatpickr-day.startRange:hover, .flatpickr-day.endRange:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg-primary);
+    }
+    .flatpickr-day.today {
+      border-color: var(--accent-hover);
+    }
+    .flatpickr-day.today:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+      color: var(--bg-primary);
+    }
+    .flatpickr-day.disabled, .flatpickr-day.disabled:hover {
+      color: var(--muted);
+      opacity: 0.4;
+      background: transparent;
+    }
+    .numInputWrapper span:hover {
+      background: var(--card-hover);
+    }
+    .flatpickr-time input, .numInput, .numInputWrapper span {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .flatpickr-time .flatpickr-am-pm:hover {
+      background: var(--card-hover);
+    }
+    input.flatpickr-input {
+        background: rgba(22, 22, 37, 0.8) !important;
+        color: var(--text) !important;
+    }
+
+    /* Deduction Mode Toggle */
+    .deduction-mode-toggle {
+        display: flex;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-sm);
+        padding: 4px;
+        border: 1px solid var(--border);
+        margin-top: 16px;
+    }
+    .deduction-mode-toggle button {
+        flex: 1;
+        padding: 8px 12px;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        transition: var(--transition);
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .deduction-mode-toggle button.active {
+        color: var(--bg-primary);
+        background: var(--accent);
+        box-shadow: 0 2px 8px rgba(255, 121, 198, 0.2);
+    }
+
+    /* Income Goal Visualizer */
+    .income-goal-visualizer {
+        margin-top: 24px;
+    }
+    .income-goal-visualizer .label {
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+    .progress-bar-container {
+        width: 100%;
+        height: 24px;
+        background-color: var(--bg-secondary);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        position: relative;
+    }
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--success), var(--accent));
+        border-radius: var(--radius-sm);
+        transition: width 0.5s ease-out;
+    }
+    .progress-bar-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: var(--bg-primary);
+        font-weight: 600;
+        font-size: 12px;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .hours-to-goal-helper {
+        background: rgba(80, 250, 123, 0.1);
+        border: 1px solid rgba(80, 250, 123, 0.3);
+        color: var(--success);
+        padding: 12px 16px;
+        border-radius: var(--radius-sm);
+        margin-top: 16px;
+        font-size: 13px;
+        font-weight: 500;
+        text-align: center;
+    }
+
+    /* Forecast Tab */
+    .forecast-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 24px;
+    }
+    .forecast-card .stat {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .forecast-card .stat .label { font-size: 16px; }
+    .forecast-card .stat .value { font-size: 22px; }
+    .what-if-slider-container {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 16px;
+    }
+    .what-if-slider-container input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 8px;
+        background: var(--bg-secondary);
+        outline: none;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+    }
+    .what-if-slider-container input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: var(--accent);
+        cursor: pointer;
+        border-radius: 50%;
+        border: 3px solid var(--card);
+    }
+    .what-if-slider-container input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: var(--accent);
+        cursor: pointer;
+        border-radius: 50%;
+        border: 3px solid var(--card);
+    }
+    
+    /* Hour Adjuster Buttons */
+    .hour-adjuster {
+        display: flex;
+        align-items: center;
+    }
+    .hour-adjuster input {
+        text-align: center;
+        border-right: none;
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+    .hour-adjuster-buttons {
+        display: flex;
+        flex-direction: column;
+    }
+    .hour-adjuster-buttons button {
+        background: var(--card-hover);
+        border: 1px solid var(--border);
+        color: var(--text);
+        width: 28px;
+        height: 24px;
+        padding: 0;
+        font-size: 16px;
+        line-height: 1;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    .hour-adjuster-buttons button:hover {
+        background: var(--accent);
+        color: var(--bg-primary);
+    }
+    .hour-adjuster-buttons button:first-child {
+        border-bottom: none;
+        border-top-right-radius: var(--radius-sm);
+    }
+    .hour-adjuster-buttons button:last-child {
+        border-bottom-right-radius: var(--radius-sm);
+    }
+
+
+    @media (max-width: 768px) {
+      .wrap { padding: 0 16px; }
+      h1 { font-size: 28px; }
+      header { flex-direction: column; align-items: flex-start; gap: 16px; }
+      .split { flex-direction: column; align-items: flex-start; gap: 16px; }
+      .row { justify-content: flex-start; }
+      .tabs { flex-wrap: wrap; }
+      .tab { padding: 12px 16px; font-size: 14px; }
+      .form-row { grid-template-columns: 1fr; }
+      .form-row-custom-pattern { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Salary & OT Dashboard</h1>
+      <div class="row">
+        <span class="pill">💡 Hourly rate is auto-calculated</span>
+        <button class="btn ghost" id="exportData">📤 Export Data</button>
+        <button class="btn ghost" id="importData">📥 Import Data</button>
+        <button class="btn ghost" id="resetAll">🔄 Reset data</button>
+      </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('manual', this)">📊 Manual Tracking</button>
+      <button class="tab" onclick="switchTab('smart', this)">🤖 Smart Calculator</button>
+      <button class="tab" onclick="switchTab('forecast', this)">🔮 Forecast</button>
+    </div>
+
+    <!-- Manual Tracking Tab -->
+    <div id="manual-tab" class="tab-content active">
+      <div class="grid grid-2">
+        <!-- Controls -->
+        <div class="card panel">
+          <div class="split">
+            <h2 class="section-title">⚙️ Settings</h2>
+            <div class="row">
+              <label class="muted small">📅 Month</label>
+              <select id="monthSelect"></select>
+            </div>
+          </div>
+          
+          <div class="deduction-mode-toggle">
+              <button id="deductionModeEstimate" onclick="setDeductionMode('estimate')">Estimate (%)</button>
+              <button id="deductionModeActual" class="active" onclick="setDeductionMode('actual')">Actual (RM)</button>
+          </div>
+
+          <div class="grid grid-4" style="margin-top: 20px">
+            <div>
+              <label>💵 Basic Salary (RM)</label>
+              <input type="number" id="basic" step="0.01" />
+            </div>
+            <div>
+              <label>📋 Claims (RM)</label>
+              <input type="number" id="claims" step="0.01" />
+            </div>
+            <div>
+              <label>📱 HP Allowance (RM)</label>
+              <input type="number" id="hpAllow" step="0.01" />
+            </div>
+            <div>
+              <label>🎯 Incentive (RM)</label>
+              <input type="number" id="incentive" step="0.01" />
+            </div>
+            <div>
+              <label>💸 Cash Advance (RM)</label>
+              <input type="number" id="advance" step="0.01" />
+            </div>
+            <div>
+               <label>💰 Net Income Goal (RM)</label>
+               <input type="number" id="incomeGoal" step="0.01" />
+            </div>
+            <div>
+              <label id="epfLabel">🏦 EPF (RM)</label>
+              <input type="number" id="epf" step="0.01" />
+            </div>
+            <div>
+              <label id="socsoLabel">🛡️ SOCSO (RM)</label>
+              <input type="number" id="socso" step="0.01" />
+            </div>
+            <div>
+              <label id="pcbLabel">📊 PCB (RM)</label>
+              <input type="number" id="pcb" step="0.01" />
+            </div>
+            <div>
+              <label id="eisLabel">⚡ EIS (RM)</label>
+              <input type="number" id="eis" step="0.01" />
+            </div>
+             <div>
+              <label>⏰ Hourly Rate (RM)</label>
+              <input type="number" id="hourly" step="0.0001" readonly />
+            </div>
+          </div>
+          <div class="row" style="margin-top: 20px; justify-content: flex-end">
+            <button id="copyLastMonth" class="btn ghost">📋 Copy Last Month</button>
+            <button id="saveParams" class="btn primary">💾 Save Settings</button>
+          </div>
+          <div id="saveMessage" style="display: none;"></div>
+        </div>
+
+        <!-- Dashboard quick stats -->
+        <div class="card panel">
+          <h2 class="section-title" style="margin-bottom: 20px">📈 Quick Stats</h2>
+          <div class="grid grid-3">
+            <div class="stat">
+              <div class="label">💰 Gross Income</div>
+              <div class="value" id="grossOut">RM 0.00</div>
+            </div>
+            <div class="stat">
+              <div class="label">💸 Total Deductions</div>
+              <div class="value" id="deductOut" style="color: var(--warning)">RM 0.00</div>
+            </div>
+            <div class="stat">
+              <div class="label">✅ Net Pay</div>
+              <div class="value" id="netOut" style="color: var(--success)">RM 0.00</div>
+            </div>
+          </div>
+          <div id="incomeGoalVisualizer" class="income-goal-visualizer" style="display: none;">
+              <div class="label">🎯 Progress to Net Income Goal</div>
+              <div class="progress-bar-container">
+                  <div id="progressBarFill" class="progress-bar-fill"></div>
+                  <div id="progressBarText" class="progress-bar-text"></div>
+              </div>
+              <div id="hoursToGoalHelper" class="hours-to-goal-helper" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OT Table -->
+      <div class="card panel" style="margin-top: 24px">
+        <div class="split">
+          <h2 class="section-title">⏰ Overtime Sessions (<span id="monthLabel"></span>)</h2>
+          <div class="row">
+            <button class="btn primary" id="addRow">➕ Add Row</button>
+            <button class="btn ghost" id="clearRows">🗑️ Clear All</button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table id="otTable">
+            <thead>
+              <tr>
+                <th style="width:160px">Date</th>
+                <th style="width:120px">Hours</th>
+                <th style="width:160px">Multiplier</th>
+                <th>OT Pay (RM)</th>
+                <th style="width:auto">Notes</th>
+                <th style="width:80px"></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" style="text-align:right; font-weight: 600">Total OT Pay</td>
+                <td id="otTotal" style="color: var(--accent)">RM 0.00</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Month breakdown + charts -->
+      <div class="grid grid-2" style="margin-top: 24px">
+        <div class="card panel">
+          <h2 class="section-title" style="margin-bottom: 20px">📊 Breakdown</h2>
+          <div class="table-container">
+            <table>
+              <tbody>
+                <tr><td class="muted">💵 Basic</td><td id="bBasic">RM 0.00</td></tr>
+                <tr><td class="muted">📋 Claims</td><td id="bClaims">RM 0.00</td></tr>
+                <tr><td class="muted">📱 HP Allowance</td><td id="bHP">RM 0.00</td></tr>
+                <tr><td class="muted">🎯 Incentive</td><td id="bIncen">RM 0.00</td></tr>
+                <tr><td class="muted">⏰ OT Pay</td><td id="bOT">RM 0.00</td></tr>
+                <tr><td style="font-weight: 600; color: var(--accent)">💰 Gross Total</td><td id="bGross" style="font-weight: 600; color: var(--accent)">RM 0.00</td></tr>
+                <tr><td class="muted">🏦 EPF</td><td id="bEPF" style="color: var(--warning)">RM 0.00</td></tr>
+                <tr><td class="muted">🛡️ SOCSO</td><td id="bSOCSO" style="color: var(--warning)">RM 0.00</td></tr>
+                <tr><td class="muted">📊 PCB</td><td id="bPCB" style="color: var(--warning)">RM 0.00</td></tr>
+                <tr><td class="muted">⚡ EIS</td><td id="bEIS" style="color: var(--warning)">RM 0.00</td></tr>
+                <tr><td class="muted">💸 Cash Advance</td><td id="bAdv" style="color: var(--warning)">RM 0.00</td></tr>
+                <tr><td style="font-weight: 600; color: var(--warning)">💸 Total Deductions</td><td id="bDeduct" style="font-weight: 600; color: var(--warning)">RM 0.00</td></tr>
+                <tr><td style="font-weight: 700; color: var(--success)">✅ Net Pay</td><td id="bNet" style="font-weight: 700; color: var(--success)">RM 0.00</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="card panel">
+          <h2 class="section-title" style="margin-bottom: 20px">📈 Monthly Comparison</h2>
+          <div class="chart-container">
+            <canvas id="chartGrossNet"></canvas>
+          </div>
+          <div class="chart-container">
+            <canvas id="chartOT"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Smart Calculator Tab -->
+    <div id="smart-tab" class="tab-content">
+      <div class="card panel">
+        <h2 class="section-title" style="margin-bottom: 20px">🤖 Smart OT Calculator</h2>
+        <p class="muted" style="margin-bottom: 24px">Plan your overtime by applying a template or calculating hours to meet a specific financial target.</p>
+        
+        <div class="smart-form">
+          <!-- Basic Settings -->
+          <div class="form-section">
+            <h4>💰 Basic Information</h4>
+            <div class="form-row">
+              <div>
+                <label>Basic Salary (RM)</label>
+                <input type="number" id="smartBasicSalary" step="0.01" placeholder="3700">
+              </div>
+              <div>
+                <label>Date Range Start</label>
+                <input type="text" id="startDate">
+              </div>
+              <div>
+                <label>Date Range End</label>
+                <input type="text" id="endDate">
+              </div>
+            </div>
+            <div id="smartHourlyRateDisplay" style="background: rgba(80, 250, 123, 0.1); border: 1px solid rgba(80, 250, 123, 0.3); color: var(--success); padding: 12px; border-radius: var(--radius-sm); margin-top: 12px; text-align: center; font-weight: 600; display: none;"></div>
+          </div>
+
+          <!-- OT Pattern Templates -->
+          <div class="form-section">
+            <h4>📝 OT Pattern Templates</h4>
+            <div class="form-row">
+                <div style="grid-column: 1 / -1;">
+                    <label for="patternSelect">Select a Pattern</label>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="patternSelect" style="flex: 1;"></select>
+                        <button class="btn" id="applyPatternBtn">🚀 Apply Pattern</button>
+                        <button class="btn danger ghost" id="deletePatternBtn" title="Delete selected custom pattern">🗑️</button>
+                    </div>
+                </div>
+            </div>
+            <h5 style="font-size: 16px; color: var(--muted); margin-top: 24px; margin-bottom: 16px; font-weight: 500;">Create a Custom Pattern</h5>
+            <div class="form-row-custom-pattern">
+                <div><label>Mon</label><input type="number" step="0.5" min="0" id="customPatternMon" placeholder="0"></div>
+                <div><label>Tue</label><input type="number" step="0.5" min="0" id="customPatternTue" placeholder="0"></div>
+                <div><label>Wed</label><input type="number" step="0.5" min="0" id="customPatternWed" placeholder="0"></div>
+                <div><label>Thu</label><input type="number" step="0.5" min="0" id="customPatternThu" placeholder="0"></div>
+                <div><label>Fri</label><input type="number" step="0.5" min="0" id="customPatternFri" placeholder="0"></div>
+                <div><label>Sat</label><input type="number" step="0.5" min="0" id="customPatternSat" placeholder="0"></div>
+                <div><label>Sun</label><input type="number" step="0.5" min="0" id="customPatternSun" placeholder="0"></div>
+                <div><label>Pattern Name</label><input type="text" id="customPatternName" placeholder="e.g. Client ABC Rush"></div>
+                <div><label>&nbsp;</label><button class="btn success" id="savePatternBtn">💾 Save</button></div>
+            </div>
+          </div>
+
+          <!-- Target-based Calculator -->
+          <div class="form-section">
+            <h4>🎯 Target-Based Calculator</h4>
+            <div class="form-row">
+              <div>
+                <label>Target OT Pay (RM)</label>
+                <input type="number" id="targetPay" step="0.01" placeholder="4000">
+              </div>
+            </div>
+             <div class="row" style="justify-content: center; margin-top: 16px;">
+                <button class="btn primary" style="padding: 16px 32px; font-size: 16px;" onclick="calculateSmartOT()">✨ Calculate to Target</button>
+            </div>
+          </div>
+
+
+          <!-- Public Holidays -->
+          <div class="form-section">
+            <h4>🏖️ Public Holidays (2025)</h4>
+            <div class="holiday-checklist" id="holidayChecklist"></div>
+            <div class="form-row" style="margin-top: 16px;">
+              <div>
+                <label>Add Custom Holiday</label>
+                <div style="display: flex; gap: 8px;">
+                  <input type="text" id="holidayPicker" style="flex: 1;">
+                  <button type="button" class="btn success" onclick="addHoliday()">➕ Add</button>
+                </div>
+              </div>
+            </div>
+            <div id="holidayList" style="margin-top: 12px;"></div>
+          </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="smartResults" style="display: none;">
+          <div class="results-summary" id="smartSummary"></div>
+          
+          <div class="form-section">
+            <div class="split" style="margin-bottom: 16px;">
+              <h4>📋 Generated OT Schedule</h4>
+              <div class="row">
+                <button class="btn success" onclick="exportToCSV()">📄 Export CSV</button>
+                <button class="btn primary" onclick="exportToPDF()">📑 Export PDF</button>
+                <button class="btn ghost" onclick="applyToManualTab()">📊 Apply to Manual Tab</button>
+              </div>
+            </div>
+            <div class="table-container">
+              <table id="smartOTTable">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>OT Type</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Hours</th>
+                    <th>Pay (RM)</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Forecast Tab -->
+    <div id="forecast-tab" class="tab-content">
+        <div class="forecast-grid">
+            <div class="card panel forecast-card">
+                <h2 class="section-title" style="margin-bottom: 20px">🔮 Predictive Forecast</h2>
+                <p class="muted" style="margin-bottom: 24px;">Based on your average overtime from the last 3 months.</p>
+                <div class="stat">
+                    <div class="label">Avg. OT Hours / Month</div>
+                    <div class="value" id="forecastAvgHours">0.0h</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Projected Gross Pay</div>
+                    <div class="value" id="forecastGross">RM 0.00</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Projected Deductions</div>
+                    <div class="value" id="forecastDeductions" style="color: var(--warning);">RM 0.00</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Projected Net Pay</div>
+                    <div class="value" id="forecastNet" style="color: var(--success);">RM 0.00</div>
+                </div>
+            </div>
+            <div class="card panel forecast-card">
+                <h2 class="section-title" style="margin-bottom: 20px">🤔 "What-If" Analysis</h2>
+                <p class="muted" style="margin-bottom: 24px;">See how additional OT hours could affect your current month's pay.</p>
+                <div>
+                    <label for="whatIfSlider">Additional OT Hours (at 1.5x): <strong id="whatIfHoursLabel" style="color: var(--accent);">0.0h</strong></label>
+                    <div class="what-if-slider-container">
+                        <input type="range" id="whatIfSlider" min="0" max="100" step="0.5" value="0">
+                    </div>
+                </div>
+                <div class="stat">
+                    <div class="label">"What-If" Gross Pay</div>
+                    <div class="value" id="whatIfGross">RM 0.00</div>
+                </div>
+                <div class="stat">
+                    <div class="label">"What-If" Deductions</div>
+                    <div class="value" id="whatIfDeductions" style="color: var(--warning);">RM 0.00</div>
+                </div>
+                <div class="stat">
+                    <div class="label">"What-If" Net Pay</div>
+                    <div class="value" id="whatIfNet" style="color: var(--success);">RM 0.00</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="footer-tip">
+      <p class="muted small" style="margin: 0">💡 <strong>Tip:</strong> All data is saved in your browser's local storage.</p>
+    </div>
+  </div>
+
+  <script>
+    // --- Global Variables ---
+    let publicHolidays = [];
+    let calculatedDailyHours = [];
+    let chartGrossNet, chartOT;
+    let months = []; // Will be populated dynamically
+
+    // --- OT Pattern Data ---
+    const otPatterns = {
+        predefined: [
+            { id: 'crunch', name: '🚀 Project Crunch Week', pattern: [4, 5, 6, 5, 4, 0, 0] }, // Mon-Sun hours
+            { id: 'warrior', name: '⚡ Weekend Warrior', pattern: [0, 0, 0, 0, 0, 8, 8] },
+            { id: 'steady', name: '🌱 Steady Grind', pattern: [3, 3, 3, 3, 3, 4, 0] },
+            { id: 'maximizer', name: '🆘 Emergency Sprint', pattern: [4, 4, 4, 4, 4, 8, 8] }
+        ],
+        custom: [] // Loaded from localStorage
+    };
+
+    // --- Data Model & Persistence ---
+    function generateMonths(startYear, endYear) {
+        const generatedMonths = [];
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        for (let year = startYear; year <= endYear; year++) {
+            for (let month = 0; month < 12; month++) {
+                const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+                const monthLabel = `${monthNames[month]} ${year}`;
+                generatedMonths.push({ key: monthKey, label: monthLabel });
+            }
+        }
+        return generatedMonths;
+    }
+    
+    months = generateMonths(2025, 2027); // Generate months for 2025, 2026, and 2027
+
+    const defaultParams = {
+      basic: 3700.00,
+      claims: 2260.00,
+      hpAllow: 80.00,
+      incentive: 500.00,
+      advance: 500.00,
+      hourly: 3700.00 / 208,
+      incomeGoal: 9500.00,
+      // Actual RM values
+      epf: 407.00,
+      socso: 29.75,
+      pcb: 534.30,
+      eis: 11.90,
+      // Estimate % values
+      epf_pct: 3.73,
+      socso_pct: 0.27,
+      pcb_pct: 4.89,
+      eis_pct: 0.11,
+      deductionMode: 'actual' // 'actual' or 'estimate'
+    };
+
+    const predefinedHolidays2025 = [
+      { date: '2025-01-01', name: 'New Year\'s Day' },
+      { date: '2025-01-21', name: 'Thaipusam' },
+      { date: '2025-01-29', name: 'Chinese New Year' },
+      { date: '2025-01-30', name: 'Chinese New Year Day 2' },
+      { date: '2025-03-29', name: 'Nuzul Al-Quran' },
+      { date: '2025-03-31', name: 'Hari Raya Aidilfitri' },
+      { date: '2025-04-01', name: 'Hari Raya Aidilfitri Day 2' },
+      { date: '2025-05-01', name: 'Labour Day' },
+      { date: '2025-05-12', name: 'Wesak Day' },
+      { date: '2025-06-02', name: 'Agong\'s Birthday' },
+      { date: '2025-06-07', name: 'Hari Raya Haji' },
+      { date: '2025-06-27', name: 'Awal Muharram' },
+      { date: '2025-08-31', name: 'Merdeka Day Holiday' }, // Merdeka is on Sunday, so Monday is holiday
+      { date: '2025-09-01', name: 'Merdeka Day' },
+      { date: '2025-09-05', name: 'Prophet Muhammad\'s Birthday' },
+      { date: '2025-09-16', name: 'Malaysia Day' },
+      { date: '2025-10-20', name: 'Deepavali' },
+      { date: '2025-12-11', name: 'Sultan of Selangor\'s Birthday' },
+      { date: '2025-12-25', name: 'Christmas Day' }
+    ];
+
+    function loadState() {
+      const raw = localStorage.getItem('salary-ot-state-v3');
+      let parsedState;
+      if (raw) {
+        try { 
+          parsedState = JSON.parse(raw); 
+        } catch(e) { 
+          parsedState = null;
+        }
+      }
+
+      if (!parsedState) {
+        const state = { params: {}, ot: {}, customPatterns: [] };
+        months.forEach(m => {
+          state.params[m.key] = { ...defaultParams };
+          state.ot[m.key] = [];
+        });
+        return state;
+      }
+      
+      months.forEach(m => {
+        if (!parsedState.params[m.key]) {
+          parsedState.params[m.key] = { ...defaultParams };
+        } else {
+            parsedState.params[m.key] = { ...defaultParams, ...parsedState.params[m.key] };
+        }
+        if (!parsedState.ot[m.key]) {
+          parsedState.ot[m.key] = [];
+        }
+      });
+
+      if (!parsedState.customPatterns) {
+        parsedState.customPatterns = [];
+      }
+      otPatterns.custom = parsedState.customPatterns;
+
+      return parsedState;
+    }
+    
+    function saveState() { 
+      state.customPatterns = otPatterns.custom;
+      localStorage.setItem('salary-ot-state-v3', JSON.stringify(state));
+    }
+
+    let state = loadState();
+
+    // --- UI Elements ---
+    const monthSelect = document.getElementById('monthSelect');
+    const monthLabel = document.getElementById('monthLabel');
+    const basic = document.getElementById('basic');
+    const claims = document.getElementById('claims');
+    const hpAllow = document.getElementById('hpAllow');
+    const incentive = document.getElementById('incentive');
+    const advance = document.getElementById('advance');
+    const hourly = document.getElementById('hourly');
+    const incomeGoal = document.getElementById('incomeGoal');
+    const epf = document.getElementById('epf');
+    const socso = document.getElementById('socso');
+    const pcb = document.getElementById('pcb');
+    const eis = document.getElementById('eis');
+    const epfLabel = document.getElementById('epfLabel');
+    const socsoLabel = document.getElementById('socsoLabel');
+    const pcbLabel = document.getElementById('pcbLabel');
+    const eisLabel = document.getElementById('eisLabel');
+    const saveParamsBtn = document.getElementById('saveParams');
+    const copyLastMonthBtn = document.getElementById('copyLastMonth');
+    const saveMessage = document.getElementById('saveMessage');
+    const addRowBtn = document.getElementById('addRow');
+    const clearRowsBtn = document.getElementById('clearRows');
+    const otTableBody = document.querySelector('#otTable tbody');
+
+    const grossOut = document.getElementById('grossOut');
+    const deductOut = document.getElementById('deductOut');
+    const netOut = document.getElementById('netOut');
+
+    const incomeGoalVisualizer = document.getElementById('incomeGoalVisualizer');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const progressBarText = document.getElementById('progressBarText');
+    const hoursToGoalHelper = document.getElementById('hoursToGoalHelper');
+
+    const b = {
+      basic: document.getElementById('bBasic'),
+      claims: document.getElementById('bClaims'),
+      hp: document.getElementById('bHP'),
+      inc: document.getElementById('bIncen'),
+      ot: document.getElementById('bOT'),
+      gross: document.getElementById('bGross'),
+      epf: document.getElementById('bEPF'),
+      socso: document.getElementById('bSOCSO'),
+      pcb: document.getElementById('bPCB'),
+      eis: document.getElementById('bEIS'),
+      adv: document.getElementById('bAdv'),
+      deduct: document.getElementById('bDeduct'),
+      net: document.getElementById('bNet')
+    };
+
+    // --- Tab Management ---
+    function switchTab(tabName, element) {
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.getElementById(tabName + '-tab').classList.add('active');
+      element.classList.add('active');
+    }
+
+    // --- Utility Functions ---
+    function fmt(n) { return (Number(n)||0).toFixed(2); }
+    function fmtDisplay(n) { return `RM ${fmt(n)}`; }
+
+
+    function formatDateToYyyyMmDd(date) { 
+      const year = date.getFullYear(); 
+      const month = String(date.getMonth() + 1).padStart(2, '0'); 
+      const day = String(date.getDate()).padStart(2, '0'); 
+      return `${year}-${month}-${day}`; 
+    }
+
+    // --- Functions to calculate and format payroll date ranges ---
+    function getOtDateRangeObjects(monthKey) { // e.g., "2025-08"
+        const [year, month] = monthKey.split('-').map(Number);
+        // For a given salary month, the OT period is from the 26th of two months ago,
+        // to the 25th of the previous month.
+        // e.g., For August salary (month 8), OT is from 26th June to 25th July.
+        // JS Date month is 0-indexed, so we subtract from the month number.
+        // End Date: month - 2 (e.g., August is 8, so monthIndex is 7. 7-1=6, which is July)
+        const endDate = new Date(year, month - 2, 25);
+        // Start Date: month - 3 (e.g., August is 8, so monthIndex is 7. 7-2=5, which is June)
+        const startDate = new Date(year, month - 3, 26);
+        return { startDate, endDate };
+    }
+
+    function getOtDateRange(monthKey) {
+        const { startDate, endDate } = getOtDateRangeObjects(monthKey);
+        const options = { day: 'numeric', month: 'short', year: 'numeric' };
+        const formattedStartDate = startDate.toLocaleDateString('en-GB', options);
+        const formattedEndDate = endDate.toLocaleDateString('en-GB', options);
+        return `${formattedStartDate} - ${formattedEndDate}`;
+    }
+
+    function updateSmartCalculatorDates(monthKey) {
+        const { startDate, endDate } = getOtDateRangeObjects(monthKey);
+        // Update flatpickr instances
+        if (document.getElementById('startDate')._flatpickr) {
+            document.getElementById('startDate')._flatpickr.setDate(startDate, false);
+        }
+        if (document.getElementById('endDate')._flatpickr) {
+            document.getElementById('endDate')._flatpickr.setDate(endDate, false);
+        }
+    }
+
+    function getDayOfWeek(date) { 
+      return ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][date.getDay()]; 
+    }
+
+    function getOvertimeTypeClass(type) { 
+      if (type.includes('Rest Day')) return 'ot-restday'; 
+      if (type.includes('Public Holiday')) return 'ot-holiday'; 
+      if (type.includes('Off Day') || type.includes('Saturday')) return 'ot-weekend'; 
+      return 'ot-weekday'; 
+    }
+
+    function roundToNearestFiveMinutes(hour, minute) { 
+      let totalMinutes = hour * 60 + minute; 
+      let roundedMinutes = Math.round(totalMinutes / 5) * 5; 
+      return [Math.floor(roundedMinutes / 60) % 24, roundedMinutes % 60]; 
+    }
+
+    function generateRandomStartTime(dayOfWeek) { 
+      let startHour = (dayOfWeek === 0 || dayOfWeek === 6) ? 
+        Math.floor(Math.random() * 9) + 9 : 
+        Math.floor(Math.random() * 6) + 18; 
+      let startMinute = Math.floor(Math.random() * 60); 
+      [startHour, startMinute] = roundToNearestFiveMinutes(startHour, startMinute); 
+      return `${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}`; 
+    }
+
+    function calculateEndTime(startTime, otHours) { 
+      const [startHour, startMinute] = startTime.split(':').map(Number); 
+      let totalMinutes = startHour * 60 + startMinute + (otHours * 60); 
+      let [endHour, endMinute] = roundToNearestFiveMinutes(0, totalMinutes); 
+      return `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`; 
+    }
+
+    function getAllHolidays() {
+        const checkedHolidays = Array.from(document.querySelectorAll('input[name="predefinedHolidays"]:checked')).map(cb => cb.value);
+        return [...new Set([...publicHolidays, ...checkedHolidays])];
+    }
+
+    // --- Manual Tab Functions ---
+    function showSaveMessage(message, isSuccess = true) {
+      saveMessage.innerHTML = `<div class="success-message">${message}</div>`;
+      saveMessage.style.display = 'block';
+      setTimeout(() => {
+        saveMessage.style.display = 'none';
+      }, 3000);
+    }
+
+    function loadParams(key) {
+      const p = state.params[key];
+      if (!p) {
+        state.params[key] = { ...defaultParams };
+        saveState();
+      }
+      const params = state.params[key];
+      basic.value = params.basic; 
+      claims.value = params.claims; 
+      hpAllow.value = params.hpAllow; 
+      incentive.value = params.incentive; 
+      advance.value = params.advance;
+      hourly.value = params.hourly.toFixed(4); 
+      incomeGoal.value = params.incomeGoal;
+      
+      updateDeductionUI(params.deductionMode);
+    }
+    
+    function saveParams(key) {
+      const params = state.params[key];
+      params.basic = Number(basic.value||0);
+      params.claims = Number(claims.value||0);
+      params.hpAllow = Number(hpAllow.value||0);
+      params.incentive = Number(incentive.value||0);
+      params.advance = Number(advance.value||0);
+      params.hourly = Number(hourly.value||0);
+      params.incomeGoal = Number(incomeGoal.value||0);
+
+      if (params.deductionMode === 'actual') {
+        params.epf = Number(epf.value||0);
+        params.socso = Number(socso.value||0);
+        params.pcb = Number(pcb.value||0);
+        params.eis = Number(eis.value||0);
+      } else {
+        params.epf_pct = Number(epf.value||0);
+        params.socso_pct = Number(socso.value||0);
+        params.pcb_pct = Number(pcb.value||0);
+        params.eis_pct = Number(eis.value||0);
+      }
+      
+      saveState();
+      showSaveMessage('✅ Settings saved successfully!');
+      refresh();
+    }
+
+    function renderOT(key) {
+      otTableBody.innerHTML = '';
+      const p = state.params[key];
+      const rows = state.ot[key] || [];
+      
+      rows.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        const otPay = (r.hours || 0) * (r.mult || 0) * (p.hourly || 0);
+        tr.innerHTML = `
+          <td><input type="text" value="${r.date||''}" data-idx="${idx}" data-field="date"></td>
+          <td>
+            <div class="hour-adjuster">
+                <input type="number" step="0.5" value="${r.hours||0}" data-idx="${idx}" data-field="hours" min="0">
+                <div class="hour-adjuster-buttons">
+                    <button data-idx="${idx}" data-action="increase">▲</button>
+                    <button data-idx="${idx}" data-action="decrease">▼</button>
+                </div>
+            </div>
+          </td>
+          <td>
+            <select data-idx="${idx}" data-field="mult">
+              <option value="0.5" ${r.mult==0.5?'selected':''}>0.5× Rest Day</option>
+              <option value="1.5" ${r.mult==1.5?'selected':''}>1.5× Working/Off Day</option>
+              <option value="2" ${r.mult==2?'selected':''}>2.0× Public Holiday</option>
+            </select>
+          </td>
+          <td class="otpay" style="font-weight: 600; color: var(--accent)">${fmtDisplay(otPay)}</td>
+          <td><input type="text" value="${r.notes || ''}" data-idx="${idx}" data-field="notes" placeholder="e.g., Project deployment"></td>
+          <td><button class="btn ghost" data-del="${idx}" title="Remove this entry">🗑️</button></td>
+        `;
+        otTableBody.appendChild(tr);
+      });
+      
+      otTableBody.querySelectorAll('input,select').forEach(el => {
+        const eventType = el.dataset.field === 'notes' ? 'change' : 'input';
+        el.addEventListener(eventType, e => {
+          const i = Number(e.target.dataset.idx);
+          const field = e.target.dataset.field;
+          if (!state.ot[key][i]) return;
+          
+          if (field === 'hours') state.ot[key][i].hours = Math.max(0, Number(e.target.value||0));
+          if (field === 'mult') state.ot[key][i].mult = Number(e.target.value||0);
+          if (field === 'notes') state.ot[key][i].notes = e.target.value||'';
+          if (field === 'date') {
+              state.ot[key][i].date = e.target.value || '';
+
+              // Smart OT Entry Logic
+              const allHolidays = getAllHolidays();
+              const selectedDate = new Date(e.target.value + 'T00:00:00');
+              if (!isNaN(selectedDate.getTime())) { // Check if date is valid
+                  const dayOfWeek = selectedDate.getDay();
+                  let newMultiplier = 1.5; // Default for weekday/Saturday
+
+                  if (allHolidays.includes(e.target.value)) {
+                      newMultiplier = 2.0;
+                  } else if (dayOfWeek === 0) { // Sunday
+                      newMultiplier = 0.5;
+                  }
+                  state.ot[key][i].mult = newMultiplier;
+              }
+          }
+          
+          saveState();
+          refresh();
+        });
+      });
+      
+      otTableBody.querySelectorAll('.hour-adjuster-buttons button').forEach(btn => {
+          btn.addEventListener('click', e => {
+              const idx = e.target.dataset.idx;
+              const action = e.target.dataset.action;
+              const input = otTableBody.querySelector(`input[data-idx="${idx}"][data-field="hours"]`);
+              let currentValue = parseFloat(input.value) || 0;
+              if (action === 'increase') {
+                  currentValue += 0.5;
+              } else if (action === 'decrease') {
+                  currentValue -= 0.5;
+              }
+              input.value = Math.max(0, currentValue).toFixed(2);
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+          });
+      });
+      
+      otTableBody.querySelectorAll('button[data-del]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.dataset.del);
+          if (confirm('Are you sure you want to remove this OT entry?')) {
+            state.ot[key].splice(i,1);
+            saveState();
+            refresh();
+          }
+        });
+      });
+
+      // Initialize flatpickr on the newly rendered date inputs
+      otTableBody.querySelectorAll('input[data-field="date"]').forEach(dateInput => {
+        flatpickr(dateInput, {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d M, Y",
+            onChange: function(selectedDates, dateStr, instance) {
+                // Manually trigger the 'input' event so the app's state updates
+                instance.element.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+      });
+    }
+
+    function totalsFor(key) {
+      const p = state.params[key] || defaultParams;
+      const rows = state.ot[key] || [];
+      
+      const otPay = rows.reduce((s, r) => s + (Number(r.hours||0) * Number(r.mult||0) * Number(p.hourly||0)), 0);
+      const gross = Number(p.basic) + Number(p.claims) + Number(p.hpAllow) + Number(p.incentive) + otPay;
+      
+      let epfAmt, socsoAmt, pcbAmt, eisAmt;
+
+      if (p.deductionMode === 'estimate') {
+        epfAmt = gross * (Number(p.epf_pct)/100);
+        socsoAmt = gross * (Number(p.socso_pct)/100);
+        pcbAmt = gross * (Number(p.pcb_pct)/100);
+        eisAmt = gross * (Number(p.eis_pct)/100);
+      } else { // 'actual' mode
+        epfAmt = Number(p.epf);
+        socsoAmt = Number(p.socso);
+        pcbAmt = Number(p.pcb);
+        eisAmt = Number(p.eis);
+      }
+      
+      const deductions = epfAmt + socsoAmt + pcbAmt + eisAmt + Number(p.advance);
+      const net = gross - deductions;
+      
+      return { otPay, gross, epfAmt, socsoAmt, pcbAmt, eisAmt, deductions, net };
+    }
+
+    function refresh() {
+      const key = monthSelect.value;
+      const cur = months.find(m => m.key === key);
+      
+      const dateRange = getOtDateRange(key);
+      monthLabel.innerHTML = cur ? `${cur.label} <span class="muted small" style="font-weight: 400;">(${dateRange})</span>` : 'Unknown Month';
+      
+      updateSmartCalculatorDates(key);
+      
+      loadParams(key);
+      renderOT(key);
+
+      const { otPay, gross, epfAmt, socsoAmt, pcbAmt, eisAmt, deductions, net } = totalsFor(key);
+      
+      document.getElementById('otTotal').textContent = fmtDisplay(otPay);
+      grossOut.innerHTML = `<span class="currency">RM</span> ${fmt(gross)}`;
+      deductOut.innerHTML = `<span class="currency">RM</span> ${fmt(deductions)}`;
+      netOut.innerHTML = `<span class="currency">RM</span> ${fmt(net)}`;
+
+      const p = state.params[key] || defaultParams;
+      b.basic.textContent = fmtDisplay(p.basic);
+      b.claims.textContent = fmtDisplay(p.claims);
+      b.hp.textContent = fmtDisplay(p.hpAllow);
+      b.inc.textContent = fmtDisplay(p.incentive);
+      b.ot.textContent = fmtDisplay(otPay);
+      b.gross.textContent = fmtDisplay(gross);
+      b.epf.textContent = fmtDisplay(epfAmt);
+      b.socso.textContent = fmtDisplay(socsoAmt);
+      b.pcb.textContent = fmtDisplay(pcbAmt);
+      b.eis.textContent = fmtDisplay(eisAmt);
+      b.adv.textContent = fmtDisplay(p.advance);
+      b.deduct.textContent = fmtDisplay(deductions);
+      b.net.textContent = fmtDisplay(net);
+
+      // Update Income Goal Visualizer
+      const goal = Number(p.incomeGoal) || 0;
+      if (goal > 0) {
+          incomeGoalVisualizer.style.display = 'block';
+          const progress = Math.min((net / goal) * 100, 100);
+          progressBarFill.style.width = `${progress}%`;
+          progressBarText.textContent = `${fmtDisplay(net)} / ${fmtDisplay(goal)} (${progress.toFixed(1)}%)`;
+
+          // Update Hours to Goal Helper
+          const remaining = goal - net;
+          if (remaining > 0) {
+              const hourlyRate = Number(p.hourly) || 0;
+              if (hourlyRate > 0) {
+                  const hours1_5x = remaining / (hourlyRate * 1.5);
+                  const hours2_0x = remaining / (hourlyRate * 2.0);
+                  const hours0_5x = remaining / (hourlyRate * 0.5);
+                  hoursToGoalHelper.innerHTML = `You're <strong>${fmtDisplay(remaining)}</strong> away! You need ~<strong>${hours1_5x.toFixed(1)}h</strong> at 1.5x, <strong>${hours2_0x.toFixed(1)}h</strong> at 2.0x, or <strong>${hours0_5x.toFixed(1)}h</strong> at 0.5x to reach your goal.`;
+                  hoursToGoalHelper.style.display = 'block';
+              }
+          } else {
+              hoursToGoalHelper.innerHTML = '🎉 Goal Achieved!';
+              hoursToGoalHelper.style.display = 'block';
+          }
+
+      } else {
+          incomeGoalVisualizer.style.display = 'none';
+      }
+
+      updateCharts();
+      calculateForecast();
+    }
+
+    function setDeductionMode(mode) {
+        const key = monthSelect.value;
+        state.params[key].deductionMode = mode;
+        updateDeductionUI(mode);
+        saveState();
+        refresh();
+    }
+
+    function updateDeductionUI(mode) {
+        const key = monthSelect.value;
+        const params = state.params[key];
+        const estimateBtn = document.getElementById('deductionModeEstimate');
+        const actualBtn = document.getElementById('deductionModeActual');
+
+        if (mode === 'estimate') {
+            estimateBtn.classList.add('active');
+            actualBtn.classList.remove('active');
+            epfLabel.innerHTML = '🏦 EPF (%)';
+            socsoLabel.innerHTML = '🛡️ SOCSO (%)';
+            pcbLabel.innerHTML = '📊 PCB (%)';
+            eisLabel.innerHTML = '⚡ EIS (%)';
+            epf.value = params.epf_pct;
+            socso.value = params.socso_pct;
+            pcb.value = params.pcb_pct;
+            eis.value = params.eis_pct;
+        } else { // 'actual'
+            estimateBtn.classList.remove('active');
+            actualBtn.classList.add('active');
+            epfLabel.innerHTML = '🏦 EPF (RM)';
+            socsoLabel.innerHTML = '🛡️ SOCSO (RM)';
+            pcbLabel.innerHTML = '📊 PCB (RM)';
+            eisLabel.innerHTML = '⚡ EIS (RM)';
+            epf.value = params.epf;
+            socso.value = params.socso;
+            pcb.value = params.pcb;
+            eis.value = params.eis;
+        }
+    }
+
+    function updateCharts() {
+      const labels = months.map(m => m.label).slice(0, 12); // Limit to 12 months for readability
+      const grossArr = labels.map(label => {
+        const monthKey = months.find(m => m.label === label).key;
+        return totalsFor(monthKey).gross;
+      });
+      const netArr = labels.map(label => {
+        const monthKey = months.find(m => m.label === label).key;
+        return totalsFor(monthKey).net;
+      });
+      const otHoursArr = labels.map(label => {
+        const monthKey = months.find(m => m.label === label).key;
+        const rows = state.ot[monthKey] || [];
+        return rows.reduce((s,r)=> s + Number(r.hours||0), 0);
+      });
+
+      if (chartGrossNet) {
+        chartGrossNet.data.labels = labels;
+        chartGrossNet.data.datasets[0].data = grossArr;
+        chartGrossNet.data.datasets[1].data = netArr;
+        chartGrossNet.update('none');
+      }
+
+      if (chartOT) {
+        chartOT.data.labels = labels;
+        chartOT.data.datasets[0].data = otHoursArr;
+        chartOT.update('none');
+      }
+    }
+
+    // --- Smart Calculator & OT Pattern Functions ---
+    function populateHolidayChecklist() { 
+      const checklistContainer = document.getElementById('holidayChecklist'); 
+      checklistContainer.innerHTML = predefinedHolidays2025.map(holiday => { 
+        const holidayDate = new Date(holiday.date + 'T00:00:00'); 
+        const dateString = holidayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); 
+        return `<div class="holiday-checkbox-item">
+          <label for="holiday-${holiday.date}">
+            <span>${holiday.name}</span>
+            <span class="date">${dateString}</span>
+          </label>
+          <input type="checkbox" id="holiday-${holiday.date}" name="predefinedHolidays" value="${holiday.date}" checked>
+        </div>`; 
+      }).join(''); 
+    }
+
+    function addHoliday() { 
+      const holidayPicker = document.getElementById('holidayPicker'); 
+      const selectedDate = holidayPicker._flatpickr.selectedDates[0];
+      if (!selectedDate) {
+        alert('Please select a date for the public holiday.');
+        return;
+      } 
+      const dateString = formatDateToYyyyMmDd(selectedDate);
+      if (publicHolidays.includes(dateString)) { 
+        alert("This custom holiday has already been added."); 
+        return; 
+      } 
+      publicHolidays.push(dateString); 
+      updateHolidayList(); 
+      holidayPicker._flatpickr.clear();
+    }
+
+    function removeHoliday(date) { 
+      publicHolidays = publicHolidays.filter(holiday => holiday !== date); 
+      updateHolidayList(); 
+    }
+
+    function updateHolidayList() { 
+      const holidayList = document.getElementById('holidayList'); 
+      publicHolidays.sort(); 
+      
+      if (publicHolidays.length === 0) {
+        holidayList.innerHTML = '<p style="color: var(--muted); font-style: italic; margin: 10px 0;">No custom holidays added yet.</p>';
+        return;
+      }
+      
+      holidayList.innerHTML = publicHolidays.map(date => { 
+        const holidayDate = new Date(date + 'T00:00:00'); 
+        const dayName = getDayOfWeek(holidayDate); 
+        const formattedDate = holidayDate.toLocaleDateString('en-GB', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        }); 
+        return `<div class="holiday-item">
+          <div>
+            <span style="color: var(--text);">${formattedDate}</span>
+            <span style="color: var(--muted); font-size: 12px;">(${dayName})</span>
+          </div>
+          <button class="btn ghost" style="padding: 4px 8px; font-size: 12px;" onclick="removeHoliday('${date}')">&times;</button>
+        </div>`; 
+      }).join(''); 
+    }
+
+    function getSmartCalulatorInputs() {
+        const startDate = document.getElementById('startDate')._flatpickr.selectedDates[0];
+        const endDate = document.getElementById('endDate')._flatpickr.selectedDates[0];
+        const basicSalary = parseFloat(document.getElementById('smartBasicSalary').value);
+
+        if (!startDate || !endDate) { 
+            alert("Please select a valid date range."); 
+            return null; 
+        }
+        if (startDate > endDate) {
+            alert("Start date cannot be after end date.");
+            return null;
+        }
+        if (!basicSalary || basicSalary <= 0) { 
+            alert('Please enter a valid Basic Salary.'); 
+            return null; 
+        }
+
+        const hourlyRate = basicSalary / 208;
+        const rates = { 
+            restDay: hourlyRate * 0.5,
+            normalOT: hourlyRate * 1.5,
+            offDay: hourlyRate * 1.5,
+            holiday: hourlyRate * 2.0
+        };
+
+        let daysInRange = [], currentDate = new Date(startDate);
+        while (currentDate <= endDate) { 
+            daysInRange.push(new Date(currentDate)); 
+            currentDate.setDate(currentDate.getDate() + 1); 
+        }
+
+        const allHolidays = getAllHolidays();
+
+        return { daysInRange, rates, allHolidays };
+    }
+
+
+    function applyOTPattern() {
+        const inputs = getSmartCalulatorInputs();
+        if (!inputs) return;
+
+        const { daysInRange, rates, allHolidays } = inputs;
+        const patternSelect = document.getElementById('patternSelect');
+        const selectedId = patternSelect.value;
+        
+        if (!selectedId) {
+            alert("Please select a pattern to apply.");
+            return;
+        }
+
+        const allPatterns = [...otPatterns.predefined, ...otPatterns.custom];
+        const selectedPattern = allPatterns.find(p => p.id === selectedId);
+
+        if (!selectedPattern) {
+            alert("Selected pattern not found.");
+            return;
+        }
+        
+        const patternHours = selectedPattern.pattern; // [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+
+        let dailyHours = [];
+        daysInRange.forEach(date => {
+            const dateString = formatDateToYyyyMmDd(date);
+            const dayOfWeek = date.getDay(); // Sunday is 0, Monday is 1...
+            const patternDayIndex = (dayOfWeek === 0) ? 6 : dayOfWeek - 1; // Adjust index for our pattern array
+            const hours = patternHours[patternDayIndex] || 0;
+
+            if (hours > 0) {
+                const isHoliday = allHolidays.includes(dateString);
+                let overtimeType = "", rate = 0;
+                
+                if (isHoliday) {
+                    overtimeType = "Overtime 2.0x (Public Holiday)"; 
+                    rate = rates.holiday; 
+                } else if (dayOfWeek === 0) { // Sunday
+                    overtimeType = "Rest Day OT (0.5x)"; 
+                    rate = rates.restDay; 
+                } else if (dayOfWeek === 6) { // Saturday
+                    overtimeType = "Off Day 1.5x (Saturday)"; 
+                    rate = rates.offDay; 
+                } else { // Weekday
+                    overtimeType = "Overtime 1.5x (Weekday)"; 
+                    rate = rates.normalOT; 
+                }
+
+                dailyHours.push({ 
+                    date: dateString, 
+                    day: getDayOfWeek(date), 
+                    hours: hours, 
+                    pay: hours * rate, 
+                    type: overtimeType, 
+                    rate: rate, 
+                    startTime: generateRandomStartTime(dayOfWeek),
+                    endTime: calculateEndTime(generateRandomStartTime(dayOfWeek), hours)
+                });
+            }
+        });
+
+        calculatedDailyHours = dailyHours;
+        displaySmartResults(calculatedDailyHours);
+    }
+
+    function calculateSmartOT() {
+        const inputs = getSmartCalulatorInputs();
+        if (!inputs) return;
+        const { daysInRange, rates, allHolidays } = inputs;
+
+        const targetPay = parseFloat(document.getElementById('targetPay').value);
+        if (!targetPay || targetPay <= 0) { 
+            alert('Please fill in a valid Target OT Pay!'); 
+            return; 
+        }
+      
+        // Use default hour limits for this calculation method
+        const hourLimits = {
+            weekday: { min: 2, max: 5 }, 
+            saturday: { min: 4, max: 8 },
+            sunday: { min: 4, max: 8 }, 
+            holiday: { min: 4, max: 8 },
+        };
+      
+        let dailyHours = [];
+        daysInRange.forEach(date => {
+            const dateString = formatDateToYyyyMmDd(date);
+            const isHoliday = allHolidays.includes(dateString);
+            const dayOfWeek = date.getDay();
+            
+            let overtimeType = "", rate = 0, dayTypeLimits;
+            
+            if (isHoliday) {
+                overtimeType = "Overtime 2.0x (Public Holiday)"; 
+                rate = rates.holiday; 
+                dayTypeLimits = hourLimits.holiday;
+            } else if (dayOfWeek === 0) {
+                overtimeType = "Rest Day OT (0.5x)"; 
+                rate = rates.restDay; 
+                dayTypeLimits = hourLimits.sunday;
+            } else if (dayOfWeek === 6) {
+                overtimeType = "Off Day 1.5x (Saturday)"; 
+                rate = rates.offDay; 
+                dayTypeLimits = hourLimits.saturday;
+            } else {
+                overtimeType = "Overtime 1.5x (Weekday)"; 
+                rate = rates.normalOT; 
+                dayTypeLimits = hourLimits.weekday;
+            }
+            
+            let randomHours = Math.random() * (dayTypeLimits.max - dayTypeLimits.min) + dayTypeLimits.min;
+            randomHours = Math.round(randomHours * 4) / 4; // Round to nearest 0.25
+            
+            dailyHours.push({ 
+                date: dateString, 
+                day: getDayOfWeek(date), 
+                hours: randomHours, 
+                pay: randomHours * rate, 
+                type: overtimeType, 
+                rate: rate, 
+                startTime: generateRandomStartTime(dayOfWeek) 
+            });
+        });
+      
+        const totalAllocatedPay = dailyHours.reduce((acc, day) => acc + day.pay, 0);
+        const scaleFactor = totalAllocatedPay > 0 ? targetPay / totalAllocatedPay : 0;
+      
+        let finalDailyHours = dailyHours.map(day => {
+            const scaledHours = day.hours * scaleFactor;
+            const finalHours = Math.round(scaledHours * 4) / 4; // Round to nearest 0.25
+            return { 
+                ...day, 
+                hours: finalHours, 
+                pay: finalHours * day.rate, 
+                endTime: calculateEndTime(day.startTime, finalHours) 
+            };
+        });
+      
+        calculatedDailyHours = finalDailyHours;
+        displaySmartResults(calculatedDailyHours, targetPay);
+    }
+
+    function displaySmartResults(dailyHours, targetPay = null) {
+      const totalHours = dailyHours.reduce((acc, day) => acc + day.hours, 0);
+      const totalPay = dailyHours.reduce((acc, day) => acc + day.pay, 0);
+      const totalDays = dailyHours.filter(day => day.hours > 0).length;
+      
+      let summaryHTML = `
+        <div class="summary-item">
+          <h4>Total OT Hours</h4>
+          <div class="value">${totalHours.toFixed(1)}h</div>
+        </div>
+        <div class="summary-item">
+          <h4>Achieved OT Pay</h4>
+          <div class="value">RM ${totalPay.toFixed(2)}</div>
+        </div>
+        <div class="summary-item">
+          <h4>Days with OT</h4>
+          <div class="value">${totalDays}</div>
+        </div>
+      `;
+
+      if (targetPay) {
+        summaryHTML += `
+        <div class="summary-item">
+          <h4>Target Achievement</h4>
+          <div class="value">${targetPay > 0 ? ((totalPay / targetPay) * 100).toFixed(1) : '0.0'}%</div>
+        </div>`;
+      }
+      
+      document.getElementById('smartSummary').innerHTML = summaryHTML;
+      
+      const tableRows = dailyHours
+        .filter(day => day.hours > 0)
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .map(day => `
+          <tr>
+            <td>${day.date}</td>
+            <td><strong>${day.day}</strong></td>
+            <td><span class="overtime-type ${getOvertimeTypeClass(day.type)}">${day.type}</span></td>
+            <td>${day.startTime}</td>
+            <td>${day.endTime}</td>
+            <td><strong>${day.hours.toFixed(2)}h</strong></td>
+            <td><strong>RM ${day.pay.toFixed(2)}</strong></td>
+          </tr>
+        `).join('');
+      
+      document.querySelector('#smartOTTable tbody').innerHTML = tableRows;
+      
+      document.getElementById('smartResults').style.display = 'block';
+      document.getElementById('smartResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function exportToCSV() {
+      if (calculatedDailyHours.length === 0) { 
+        alert("No data to export. Please calculate first."); 
+        return; 
+      }
+      
+      const headers = ["Date", "Day", "OT Type", "Start Time", "End Time", "Hours", "Pay (RM)"];
+      const rows = calculatedDailyHours.filter(day => day.hours > 0).map(day => [
+        day.date, 
+        day.day, 
+        `"${day.type}"`, 
+        day.startTime, 
+        day.endTime, 
+        day.hours.toFixed(2), 
+        day.pay.toFixed(2)
+      ].join(','));
+      
+      const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.join("\n");
+      const link = document.createElement("a");
+      link.setAttribute("href", encodeURI(csvContent));
+      link.setAttribute("download", "overtime_schedule.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function exportToPDF() {
+      if (calculatedDailyHours.length === 0) { 
+        alert("No data to export. Please calculate first."); 
+        return; 
+      }
+      
+      const { jsPDF } = window.jspdf;
+      const resultsNode = document.getElementById('smartResults');
+      
+      html2canvas(resultsNode, { 
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: '#1a1a2e',
+        logging: false
+      }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const pdf = new jsPDF({ 
+          orientation: 'portrait', 
+          unit: 'mm', 
+          format: 'a4' 
+        });
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const canvasAspectRatio = canvas.width / canvas.height;
+        
+        let imgWidth = pdfWidth - 20;
+        let imgHeight = imgWidth / canvasAspectRatio;
+        
+        if (imgHeight > pdfHeight - 20) {
+          imgHeight = pdfHeight - 20;
+          imgWidth = imgHeight * canvasAspectRatio;
+        }
+        
+        const x = (pdfWidth - imgWidth) / 2;
+        const y = 10;
+        
+        pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+        pdf.save('overtime_schedule.pdf');
+      }).catch(err => {
+        console.error("PDF generation failed:", err);
+        alert("❌ An error occurred while creating the PDF. Please try again.");
+      });
+    }
+
+    function applyToManualTab() {
+      if (calculatedDailyHours.length === 0) { 
+        alert("No smart calculation data to apply. Please calculate first."); 
+        return; 
+      }
+
+      const currentMonth = monthSelect.value;
+      const workingDays = calculatedDailyHours.filter(day => day.hours > 0);
+      
+      if (workingDays.length === 0) {
+        alert("No overtime days found in the calculation.");
+        return;
+      }
+
+      if (!confirm(`This will clear all existing OT entries for ${months.find(m => m.key === currentMonth)?.label || currentMonth} and apply the new schedule. Continue?`)) {
+          return;
+      }
+
+      // Clear existing OT entries for current month
+      state.ot[currentMonth] = [];
+
+      // Convert smart calculation to manual entries
+      workingDays.forEach(day => {
+        let multiplier = 1.5; // Default
+        
+        if (day.type.includes('Rest Day')) multiplier = 0.5;
+        else if (day.type.includes('Public Holiday')) multiplier = 2.0;
+        else if (day.type.includes('1.5x')) multiplier = 1.5;
+        
+        state.ot[currentMonth].push({
+          date: day.date,
+          hours: day.hours,
+          mult: multiplier,
+          notes: 'Generated by Smart OT'
+        });
+      });
+
+      saveState();
+      
+      // Switch to manual tab and refresh
+      switchTab('manual', document.querySelector('.tab[onclick*="manual"]'));
+      refresh();
+      
+      alert(`✅ Applied ${workingDays.length} overtime entries to ${months.find(m => m.key === currentMonth)?.label || currentMonth}!`);
+    }
+
+    // --- OT Pattern Management ---
+    function populatePatternSelector() {
+        const select = document.getElementById('patternSelect');
+        select.innerHTML = '<option value="">-- Select a pattern --</option>';
+
+        const predefinedGroup = document.createElement('optgroup');
+        predefinedGroup.label = 'Predefined Patterns';
+        otPatterns.predefined.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name;
+            predefinedGroup.appendChild(opt);
+        });
+        select.appendChild(predefinedGroup);
+
+        if (otPatterns.custom.length > 0) {
+            const customGroup = document.createElement('optgroup');
+            customGroup.label = 'My Custom Patterns';
+            otPatterns.custom.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name;
+                customGroup.appendChild(opt);
+            });
+            select.appendChild(customGroup);
+        }
+    }
+
+    function saveCustomPattern() {
+        const name = document.getElementById('customPatternName').value.trim();
+        if (!name) {
+            alert("Please enter a name for your custom pattern.");
+            return;
+        }
+
+        const pattern = [
+            Number(document.getElementById('customPatternMon').value) || 0,
+            Number(document.getElementById('customPatternTue').value) || 0,
+            Number(document.getElementById('customPatternWed').value) || 0,
+            Number(document.getElementById('customPatternThu').value) || 0,
+            Number(document.getElementById('customPatternFri').value) || 0,
+            Number(document.getElementById('customPatternSat').value) || 0,
+            Number(document.getElementById('customPatternSun').value) || 0,
+        ];
+
+        if (pattern.every(h => h === 0)) {
+            alert("Pattern cannot be all zeros. Please enter some hours.");
+            return;
+        }
+
+        const newPattern = {
+            id: `custom_${Date.now()}`,
+            name: `📝 ${name}`,
+            pattern: pattern
+        };
+
+        otPatterns.custom.push(newPattern);
+        saveState();
+        populatePatternSelector();
+        alert(`✅ Pattern "${name}" saved!`);
+
+        // Clear inputs
+        document.getElementById('customPatternName').value = '';
+        ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+            document.getElementById(`customPattern${day}`).value = '';
+        });
+    }
+
+    function deleteCustomPattern() {
+        const select = document.getElementById('patternSelect');
+        const selectedId = select.value;
+
+        if (!selectedId || !selectedId.startsWith('custom_')) {
+            alert("Please select a custom pattern to delete.");
+            return;
+        }
+
+        const patternName = select.options[select.selectedIndex].text;
+        if (confirm(`Are you sure you want to delete the custom pattern "${patternName}"?`)) {
+            otPatterns.custom = otPatterns.custom.filter(p => p.id !== selectedId);
+            saveState();
+            populatePatternSelector();
+            alert(`🗑️ Pattern "${patternName}" deleted.`);
+        }
+    }
+
+
+    // --- Forecast Functions ---
+    function calculateForecast() {
+        const currentKey = monthSelect.value;
+        const currentIndex = months.findIndex(m => m.key === currentKey);
+        
+        let totalHours = 0;
+        let monthsCount = 0;
+        
+        for (let i = 1; i <= 3; i++) {
+            if (currentIndex - i >= 0) {
+                const prevMonthKey = months[currentIndex - i].key;
+                const rows = state.ot[prevMonthKey] || [];
+                totalHours += rows.reduce((sum, row) => sum + (Number(row.hours) || 0), 0);
+                monthsCount++;
+            }
+        }
+        
+        const avgHours = monthsCount > 0 ? totalHours / monthsCount : 0;
+        document.getElementById('forecastAvgHours').textContent = `${avgHours.toFixed(1)}h`;
+
+        const p = state.params[currentKey];
+        const projectedOtPay = avgHours * (Number(p.hourly) || 0) * 1.5; // Assume 1.5x for average
+        const projectedGross = Number(p.basic) + Number(p.claims) + Number(p.hpAllow) + Number(p.incentive) + projectedOtPay;
+        
+        const projectedEpf = projectedGross * (Number(p.epf_pct)/100);
+        const projectedSocso = projectedGross * (Number(p.socso_pct)/100);
+        const projectedPcb = projectedGross * (Number(p.pcb_pct)/100);
+        const projectedEis = projectedGross * (Number(p.eis_pct)/100);
+        const projectedDeductions = projectedEpf + projectedSocso + projectedPcb + projectedEis + Number(p.advance);
+        const projectedNet = projectedGross - projectedDeductions;
+
+        document.getElementById('forecastGross').textContent = fmtDisplay(projectedGross);
+        document.getElementById('forecastDeductions').textContent = fmtDisplay(projectedDeductions);
+        document.getElementById('forecastNet').textContent = fmtDisplay(projectedNet);
+
+        // Also initialize the what-if analysis
+        updateWhatIf(0);
+    }
+
+    function updateWhatIf(additionalHours) {
+        const key = monthSelect.value;
+        const p = state.params[key];
+        const { gross, deductions, net } = totalsFor(key); // Get current month's actuals
+
+        const additionalOtPay = additionalHours * (Number(p.hourly) || 0) * 1.5;
+        const whatIfGross = gross + additionalOtPay;
+
+        // Recalculate deductions based on the new gross pay using percentages
+        const whatIfEpf = whatIfGross * (Number(p.epf_pct)/100);
+        const whatIfSocso = whatIfGross * (Number(p.socso_pct)/100);
+        const whatIfPcb = whatIfGross * (Number(p.pcb_pct)/100);
+        const whatIfEis = whatIfGross * (Number(p.eis_pct)/100);
+        const whatIfDeductions = whatIfEpf + whatIfSocso + whatIfPcb + whatIfEis + Number(p.advance);
+        const whatIfNet = whatIfGross - whatIfDeductions;
+
+        document.getElementById('whatIfGross').textContent = fmtDisplay(whatIfGross);
+        document.getElementById('whatIfDeductions').textContent = fmtDisplay(whatIfDeductions);
+        document.getElementById('whatIfNet').textContent = fmtDisplay(whatIfNet);
+    }
+
+
+    // --- Event Handlers ---
+    function initCharts() {
+      const computedStyle = getComputedStyle(document.documentElement);
+      const mutedColor = computedStyle.getPropertyValue('--muted').trim();
+      const textColor = computedStyle.getPropertyValue('--text').trim();
+      const borderColor = computedStyle.getPropertyValue('--border').trim();
+      const cardColor = computedStyle.getPropertyValue('--card').trim();
+      const radiusSm = computedStyle.getPropertyValue('--radius-sm').trim();
+
+      const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 20,
+              color: mutedColor,
+              font: {
+                  family: "'Poppins', sans-serif",
+                  size: 12
+              }
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(22, 22, 37, 0.95)',
+            titleColor: textColor,
+            bodyColor: mutedColor,
+            borderColor: borderColor,
+            borderWidth: 1,
+            cornerRadius: parseInt(radiusSm),
+            padding: 12,
+            titleFont: { family: "'Poppins', sans-serif" },
+            bodyFont: { family: "'Poppins', sans-serif" },
+            callbacks: {
+              label: function(context) {
+                if (context.datasetIndex !== undefined && context.dataset.label) {
+                  return context.dataset.label + ': RM ' + context.parsed.y.toFixed(2);
+                }
+                return context.label + ': ' + context.parsed.y.toFixed(1) + 'h';
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(58, 58, 90, 0.5)',
+              drawBorder: false
+            },
+            ticks: {
+              color: mutedColor,
+              font: { family: "'Poppins', sans-serif" }
+            }
+          },
+          x: {
+            grid: {
+              color: 'rgba(58, 58, 90, 0.3)',
+              display: false
+            },
+            ticks: {
+              color: mutedColor,
+              font: { family: "'Poppins', sans-serif" }
+            }
+          }
+        }
+      };
+
+      chartGrossNet = new Chart(document.getElementById('chartGrossNet'), {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Gross Income',
+              data: [],
+              backgroundColor: 'rgba(255, 121, 198, 0.7)',
+              borderColor: 'rgba(255, 121, 198, 1)',
+              borderWidth: 1,
+              borderRadius: 6
+            },
+            {
+              label: 'Net Pay',
+              data: [],
+              backgroundColor: 'rgba(80, 250, 123, 0.7)',
+              borderColor: 'rgba(80, 250, 123, 1)',
+              borderWidth: 1,
+              borderRadius: 6
+            }
+          ]
+        },
+        options: commonOptions
+      });
+
+      chartOT = new Chart(document.getElementById('chartOT'), {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'OT Hours',
+              data: [],
+              backgroundColor: 'rgba(241, 250, 140, 0.1)',
+              borderColor: 'rgba(241, 250, 140, 1)',
+              borderWidth: 3,
+              fill: true,
+              tension: 0.4,
+              pointBackgroundColor: 'rgba(241, 250, 140, 1)',
+              pointBorderColor: cardColor,
+              pointBorderWidth: 2,
+              pointRadius: 6,
+              pointHoverRadius: 8
+            }
+          ]
+        },
+        options: commonOptions
+      });
+    }
+
+    // --- Data Import/Export Functions ---
+    function exportData() {
+        const dataStr = JSON.stringify(state, null, 2);
+        const dataBlob = new Blob([dataStr], {type: "application/json"});
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.download = `salary-ot-dashboard-backup-${new Date().toISOString().split('T')[0]}.json`;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+        showSaveMessage('✅ Data exported successfully!');
+    }
+
+    function importData() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = e => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = readerEvent => {
+                    try {
+                        const importedState = JSON.parse(readerEvent.target.result);
+                        // Basic validation to check if it's a valid state file
+                        if (importedState && importedState.params && importedState.ot) {
+                            if (confirm("This will overwrite all current data. Are you sure you want to proceed?")) {
+                                state = importedState;
+                                saveState();
+                                refresh();
+                                populatePatternSelector(); // Repopulate after import
+                                showSaveMessage('✅ Data imported successfully!');
+                            }
+                        } else {
+                            alert("Error: Invalid data file.");
+                        }
+                    } catch (err) {
+                        alert("Error reading file. Please make sure it's a valid backup file.");
+                        console.error(err);
+                    }
+                }
+                reader.readAsText(file);
+            }
+        }
+        input.click();
+    }
+
+    // --- Initialize Everything ---
+    document.addEventListener('DOMContentLoaded', function() {
+      // Populate month selector
+      months.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.key; 
+        opt.textContent = m.label; 
+        monthSelect.appendChild(opt);
+      });
+      
+      // Set default month to current month
+      const today = new Date();
+      const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+      if (monthSelect.querySelector(`option[value="${currentMonthKey}"]`)) {
+          monthSelect.value = currentMonthKey;
+      } else {
+          monthSelect.value = '2025-08'; // Fallback
+      }
+
+      // Initialize flatpickr on static date inputs
+      flatpickr("#startDate, #endDate, #holidayPicker", {
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d M, Y",
+      });
+
+      // Set up smart calculator salary input
+      const smartSalaryInput = document.getElementById('smartBasicSalary'); 
+      smartSalaryInput.value = '3700.00'; 
+      smartSalaryInput.dispatchEvent(new Event('input'));
+
+      // Initialize holiday checklist and OT patterns
+      populateHolidayChecklist();
+      populatePatternSelector();
+      
+      // Set up event listeners
+      monthSelect.addEventListener('change', refresh);
+      
+      saveParamsBtn.addEventListener('click', () => {
+        saveParamsBtn.classList.add('loading');
+        setTimeout(() => {
+          saveParams(monthSelect.value);
+          saveParamsBtn.classList.remove('loading');
+        }, 100);
+      });
+
+      copyLastMonthBtn.addEventListener('click', () => {
+        const currentKey = monthSelect.value;
+        const currentIndex = months.findIndex(m => m.key === currentKey);
+        if (currentIndex > 0) {
+            const lastMonthKey = months[currentIndex - 1].key;
+            if (confirm(`This will overwrite the current settings for ${months[currentIndex].label} with the settings from ${months[currentIndex - 1].label}. Are you sure?`)) {
+                // Keep OT data, but copy params
+                state.params[currentKey] = { ...state.params[lastMonthKey] };
+                saveState();
+                refresh();
+                showSaveMessage(`✅ Settings from ${months[currentIndex - 1].label} copied.`);
+            }
+        } else {
+            alert("Cannot copy, as this is the first month in the list.");
+        }
+      });
+      
+      addRowBtn.addEventListener('click', () => {
+        const key = monthSelect.value;
+        if (!state.ot[key]) state.ot[key] = [];
+        const todayStr = new Date().toISOString().split('T')[0];
+        state.ot[key].push({ date: todayStr, hours: 0, mult: 1.5, notes: '' });
+        saveState();
+        refresh();
+      });
+      
+      clearRowsBtn.addEventListener('click', () => {
+        const key = monthSelect.value;
+        const monthName = months.find(m => m.key === key)?.label || 'this month';
+        if (confirm(`⚠️ Are you sure you want to clear all OT entries for ${monthName}? This cannot be undone.`)) {
+          state.ot[key] = [];
+          saveState();
+          refresh();
+        }
+      });
+      
+      document.getElementById('resetAll').addEventListener('click', () => {
+        if (confirm('⚠️ This will reset ALL data including settings and OT entries for all months. Are you absolutely sure? This cannot be undone.')) {
+          localStorage.removeItem('salary-ot-state-v3');
+          state = loadState();
+          showSaveMessage('🔄 All data has been reset to defaults');
+          // Repopulate dropdown after reset
+          monthSelect.innerHTML = '';
+          months.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.key;
+            opt.textContent = m.label;
+            monthSelect.appendChild(opt);
+          });
+          monthSelect.value = '2025-08';
+          populatePatternSelector();
+          refresh();
+        }
+      });
+
+      document.getElementById('exportData').addEventListener('click', exportData);
+      document.getElementById('importData').addEventListener('click', importData);
+
+      document.getElementById('whatIfSlider').addEventListener('input', (e) => {
+          const hours = parseFloat(e.target.value);
+          document.getElementById('whatIfHoursLabel').textContent = `${hours.toFixed(1)}h`;
+          updateWhatIf(hours);
+      });
+
+      // Add event listener for basic salary to auto-calculate hourly rate
+      basic.addEventListener('input', () => {
+        const basicSal = parseFloat(basic.value) || 0;
+        const calculatedHourly = basicSal > 0 ? basicSal / 208 : 0;
+        hourly.value = calculatedHourly.toFixed(4);
+      });
+
+      // Auto-save on input changes
+      [basic, claims, hpAllow, incentive, advance, epf, socso, pcb, eis, incomeGoal].forEach(input => {
+        input.addEventListener('input', () => {
+          clearTimeout(input.saveTimeout);
+          input.saveTimeout = setTimeout(() => {
+            saveParams(monthSelect.value);
+          }, 1000);
+        });
+      });
+
+      // Smart calculator event listeners
+      document.getElementById('smartBasicSalary').addEventListener('input', function() { 
+        const basicSalary = parseFloat(this.value) || 0; 
+        const hourlyRate = basicSalary > 0 ? (basicSalary / 208).toFixed(2) : '0.00'; 
+        const display = document.getElementById('smartHourlyRateDisplay'); 
+        display.innerHTML = `Hourly Rate: RM <strong>${hourlyRate}</strong> | Rest Day: RM ${(hourlyRate * 0.5).toFixed(2)} | Normal/Off: RM ${(hourlyRate * 1.5).toFixed(2)} | Holiday: RM ${(hourlyRate * 2.0).toFixed(2)}`; 
+        display.style.display = basicSalary > 0 ? 'block' : 'none'; 
+      });
+
+      // OT Pattern Listeners
+      document.getElementById('applyPatternBtn').addEventListener('click', applyOTPattern);
+      document.getElementById('savePatternBtn').addEventListener('click', saveCustomPattern);
+      document.getElementById('deletePatternBtn').addEventListener('click', deleteCustomPattern);
+
+
+      // Prefill July with known entries if empty
+      if (!state.ot['2025-07'] || state.ot['2025-07'].length === 0) {
+        state.ot['2025-07'] = [
+          {date:'2025-07-24', hours:6.00, mult:1.5, notes: ''},
+          {date:'2025-07-23', hours:5.50, mult:1.5, notes: ''},
+          {date:'2025-07-22', hours:5.50, mult:1.5, notes: ''},
+          {date:'2025-07-21', hours:4.50, mult:1.5, notes: ''},
+          {date:'2025-07-20', hours:4.00, mult:0.5, notes: ''},
+          {date:'2025-07-19', hours:4.50, mult:1.5, notes: ''},
+          {date:'2025-07-18', hours:4.50, mult:1.5, notes: ''},
+          {date:'2025-07-17', hours:5.50, mult:1.5, notes: ''},
+          {date:'2025-07-16', hours:6.50, mult:1.5, notes: ''},
+          {date:'2025-07-15', hours:7.00, mult:1.5, notes: ''},
+          {date:'2025-07-14', hours:3.50, mult:1.5, notes: ''},
+          {date:'2025-07-11', hours:5.00, mult:1.5, notes: ''},
+          {date:'2025-07-10', hours:6.50, mult:1.5, notes: ''},
+          {date:'2025-07-09', hours:6.00, mult:1.5, notes: ''},
+          {date:'2025-07-08', hours:6.50, mult:1.5, notes: ''},
+          {date:'2025-07-07', hours:5.92, mult:1.5, notes: ''},
+          {date:'2025-07-06', hours:4.00, mult:0.5, notes: ''},
+          {date:'2025-07-05', hours:4.00, mult:1.5, notes: ''},
+          {date:'2025-07-04', hours:5.00, mult:1.5, notes: ''},
+          {date:'2025-07-03', hours:6.00, mult:1.5, notes: ''},
+          {date:'2025-07-02', hours:4.50, mult:1.5, notes: ''},
+          {date:'2025-07-01', hours:7.50, mult:1.5, notes: ''}
+        ];
+        saveState();
+      }
+
+      // Initialize charts and refresh
+      initCharts();
+      refresh();
+    });
+  </script>
+</body>
+</html>
