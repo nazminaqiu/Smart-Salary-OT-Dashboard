@@ -593,6 +593,40 @@
     .ot-holiday { background: rgba(241, 250, 140, 0.2); color: var(--warning); }
     .ot-restday { background: rgba(255, 85, 85, 0.2); color: var(--danger); }
     
+    /* Hour Adjuster Styles */
+    #hourAdjusterContainer .grid-4 {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+    .adjuster-item {
+        background: var(--bg-secondary);
+        border-radius: var(--radius-sm);
+        padding: 16px;
+        border: 1px solid var(--border);
+    }
+    .adjuster-item label {
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--text);
+    }
+    .adjuster-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+    }
+    .adjuster-controls input {
+        text-align: center;
+        font-weight: 600;
+        font-size: 16px;
+        background: rgba(0,0,0,0.2);
+    }
+    .adjuster-controls .btn {
+        padding: 8px 12px;
+        font-size: 18px;
+        line-height: 1;
+        min-width: 40px;
+    }
+    
     /* Custom Flatpickr Theme */
     .flatpickr-calendar {
       background: var(--card);
@@ -975,6 +1009,8 @@
             <thead>
               <tr>
                 <th style="width:160px">Date</th>
+                <th style="width:110px">Start</th>
+                <th style="width:110px">End</th>
                 <th style="width:120px">Hours</th>
                 <th style="width:160px">Multiplier</th>
                 <th>OT Pay (RM)</th>
@@ -985,9 +1021,9 @@
             <tbody></tbody>
             <tfoot>
               <tr>
-                <td colspan="4" style="text-align:right; font-weight: 600">Total OT Pay</td>
+                <td colspan="5" style="text-align:right; font-weight: 600">Total OT Pay</td>
                 <td id="otTotal" style="color: var(--accent)">RM 0.00</td>
-                <td></td>
+                <td colspan="2"></td>
               </tr>
             </tfoot>
           </table>
@@ -1094,8 +1130,9 @@
                 <input type="number" id="targetPay" step="0.01" placeholder="4000">
               </div>
             </div>
-             <div class="row" style="justify-content: center; margin-top: 16px;">
-                <button class="btn primary" style="padding: 16px 32px; font-size: 16px;" onclick="calculateSmartOT()">✨ Calculate to Target</button>
+             <div class="row" style="justify-content: center; margin-top: 16px; gap: 16px;">
+                <button class="btn primary" style="padding: 12px 24px; font-size: 16px;" onclick="calculateSmartOT()">✨ Calculate to Target</button>
+                <button class="btn success" style="padding: 12px 24px; font-size: 16px;" onclick="aiSuggestSchedule()">🤖 AI Suggest Schedule</button>
             </div>
           </div>
 
@@ -1121,6 +1158,45 @@
         <div id="smartResults" style="display: none;">
           <div class="results-summary" id="smartSummary"></div>
           
+          <!-- Hour Adjuster -->
+          <div class="form-section" id="hourAdjusterContainer" style="display: none;">
+              <h4>🔧 Fine-Tune Schedule</h4>
+              <div class="grid grid-4">
+                  <div class="adjuster-item">
+                      <label>Weekday (1.5x)</label>
+                      <div class="adjuster-controls">
+                          <button class="btn ghost" onclick="adjustHours('weekday', -0.5)">-</button>
+                          <input type="text" id="weekdayHoursTotal" readonly>
+                          <button class="btn ghost" onclick="adjustHours('weekday', 0.5)">+</button>
+                      </div>
+                  </div>
+                  <div class="adjuster-item">
+                      <label>Saturday (1.5x)</label>
+                      <div class="adjuster-controls">
+                          <button class="btn ghost" onclick="adjustHours('saturday', -0.5)">-</button>
+                          <input type="text" id="saturdayHoursTotal" readonly>
+                          <button class="btn ghost" onclick="adjustHours('saturday', 0.5)">+</button>
+                      </div>
+                  </div>
+                  <div class="adjuster-item">
+                      <label>Sunday (0.5x)</label>
+                      <div class="adjuster-controls">
+                          <button class="btn ghost" onclick="adjustHours('sunday', -0.5)">-</button>
+                          <input type="text" id="sundayHoursTotal" readonly>
+                          <button class="btn ghost" onclick="adjustHours('sunday', 0.5)">+</button>
+                      </div>
+                  </div>
+                  <div class="adjuster-item">
+                      <label>Holiday (2.0x)</label>
+                      <div class="adjuster-controls">
+                          <button class="btn ghost" onclick="adjustHours('holiday', -0.5)">-</button>
+                          <input type="text" id="holidayHoursTotal" readonly>
+                          <button class="btn ghost" onclick="adjustHours('holiday', 0.5)">+</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
           <div class="form-section">
             <div class="split" style="margin-bottom: 16px;">
               <h4>📋 Generated OT Schedule</h4>
@@ -1209,6 +1285,8 @@
     // --- Global Variables ---
     let publicHolidays = [];
     let calculatedDailyHours = [];
+    let lastGeneratedRates = {};
+    let lastGeneratedAllHolidays = [];
     let chartGrossNet, chartOT;
     let months = []; // Will be populated dynamically
 
@@ -1401,13 +1479,7 @@
     // --- Functions to calculate and format payroll date ranges ---
     function getOtDateRangeObjects(monthKey) { // e.g., "2025-08"
         const [year, month] = monthKey.split('-').map(Number);
-        // For a given salary month, the OT period is from the 26th of two months ago,
-        // to the 25th of the previous month.
-        // e.g., For August salary (month 8), OT is from 26th June to 25th July.
-        // JS Date month is 0-indexed, so we subtract from the month number.
-        // End Date: month - 2 (e.g., August is 8, so monthIndex is 7. 7-1=6, which is July)
         const endDate = new Date(year, month - 2, 25);
-        // Start Date: month - 3 (e.g., August is 8, so monthIndex is 7. 7-2=5, which is June)
         const startDate = new Date(year, month - 3, 26);
         return { startDate, endDate };
     }
@@ -1458,10 +1530,27 @@
     }
 
     function calculateEndTime(startTime, otHours) { 
+      if (!startTime) return '';
       const [startHour, startMinute] = startTime.split(':').map(Number); 
       let totalMinutes = startHour * 60 + startMinute + (otHours * 60); 
       let [endHour, endMinute] = roundToNearestFiveMinutes(0, totalMinutes); 
       return `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`; 
+    }
+
+    function calculateDuration(startTime, endTime) {
+        if (!startTime || !endTime) return 0;
+
+        const start = new Date(`1970-01-01T${startTime}:00`);
+        const end = new Date(`1970-01-01T${endTime}:00`);
+
+        if (end < start) { // Handle overnight case
+            end.setDate(end.getDate() + 1);
+        }
+
+        const diffMs = end - start;
+        const diffHours = diffMs / (1000 * 60 * 60);
+        
+        return Math.round(diffHours * 4) / 4; // Round to nearest 0.25
     }
 
     function getAllHolidays() {
@@ -1533,10 +1622,12 @@
         const otPay = (r.hours || 0) * (r.mult || 0) * (p.hourly || 0);
         tr.innerHTML = `
           <td><input type="text" value="${r.date||''}" data-idx="${idx}" data-field="date"></td>
+          <td><input type="time" class="time-input" value="${r.start||''}" data-idx="${idx}" data-field="start"></td>
+          <td><input type="time" class="time-input" value="${r.end||''}" data-idx="${idx}" data-field="end"></td>
           <td>
             <div class="hour-adjuster">
-                <input type="number" step="0.5" value="${r.hours||0}" data-idx="${idx}" data-field="hours" min="0">
-                <div class="hour-adjuster-buttons">
+                <input type="number" step="0.25" value="${r.hours||0}" data-idx="${idx}" data-field="hours" min="0">
+                 <div class="hour-adjuster-buttons">
                     <button data-idx="${idx}" data-action="increase">▲</button>
                     <button data-idx="${idx}" data-action="decrease">▼</button>
                 </div>
@@ -1557,31 +1648,33 @@
       });
       
       otTableBody.querySelectorAll('input,select').forEach(el => {
-        const eventType = el.dataset.field === 'notes' ? 'change' : 'input';
+        const eventType = (el.tagName === 'SELECT' || el.dataset.field === 'notes' || el.type === 'time') ? 'change' : 'input';
         el.addEventListener(eventType, e => {
           const i = Number(e.target.dataset.idx);
           const field = e.target.dataset.field;
           if (!state.ot[key][i]) return;
           
-          if (field === 'hours') state.ot[key][i].hours = Math.max(0, Number(e.target.value||0));
-          if (field === 'mult') state.ot[key][i].mult = Number(e.target.value||0);
-          if (field === 'notes') state.ot[key][i].notes = e.target.value||'';
+          state.ot[key][i][field] = e.target.value || '';
+          
           if (field === 'date') {
-              state.ot[key][i].date = e.target.value || '';
-
-              // Smart OT Entry Logic
               const allHolidays = getAllHolidays();
               const selectedDate = new Date(e.target.value + 'T00:00:00');
-              if (!isNaN(selectedDate.getTime())) { // Check if date is valid
+              if (!isNaN(selectedDate.getTime())) {
                   const dayOfWeek = selectedDate.getDay();
-                  let newMultiplier = 1.5; // Default for weekday/Saturday
-
-                  if (allHolidays.includes(e.target.value)) {
-                      newMultiplier = 2.0;
-                  } else if (dayOfWeek === 0) { // Sunday
-                      newMultiplier = 0.5;
-                  }
+                  let newMultiplier = 1.5;
+                  if (allHolidays.includes(e.target.value)) newMultiplier = 2.0;
+                  else if (dayOfWeek === 0) newMultiplier = 0.5;
                   state.ot[key][i].mult = newMultiplier;
+              }
+          }
+
+          if (field === 'start' || field === 'end') {
+              const row = e.target.closest('tr');
+              const startVal = row.querySelector('input[data-field="start"]').value;
+              const endVal = row.querySelector('input[data-field="end"]').value;
+              if (startVal && endVal) {
+                  const duration = calculateDuration(startVal, endVal);
+                  state.ot[key][i].hours = duration;
               }
           }
           
@@ -1592,17 +1685,29 @@
       
       otTableBody.querySelectorAll('.hour-adjuster-buttons button').forEach(btn => {
           btn.addEventListener('click', e => {
-              const idx = e.target.dataset.idx;
+              const key = monthSelect.value;
+              const idx = Number(e.target.dataset.idx);
+              if (!state.ot[key][idx]) return;
+
               const action = e.target.dataset.action;
-              const input = otTableBody.querySelector(`input[data-idx="${idx}"][data-field="hours"]`);
-              let currentValue = parseFloat(input.value) || 0;
+              
+              let currentHours = parseFloat(state.ot[key][idx].hours) || 0;
               if (action === 'increase') {
-                  currentValue += 0.5;
+                  currentHours += 0.25;
               } else if (action === 'decrease') {
-                  currentValue -= 0.5;
+                  currentHours -= 0.25;
               }
-              input.value = Math.max(0, currentValue).toFixed(2);
-              input.dispatchEvent(new Event('input', { bubbles: true }));
+              const newHours = Math.max(0, currentHours);
+              state.ot[key][idx].hours = newHours;
+              
+              const startTime = state.ot[key][idx].start;
+              if (startTime) {
+                  const newEndTime = calculateEndTime(startTime, newHours);
+                  state.ot[key][idx].end = newEndTime;
+              }
+
+              saveState();
+              refresh();
           });
       });
       
@@ -1617,16 +1722,11 @@
         });
       });
 
-      // Initialize flatpickr on the newly rendered date inputs
+      // Initialize flatpickr on date inputs
       otTableBody.querySelectorAll('input[data-field="date"]').forEach(dateInput => {
         flatpickr(dateInput, {
-            dateFormat: "Y-m-d",
-            altInput: true,
-            altFormat: "d M, Y",
-            onChange: function(selectedDates, dateStr, instance) {
-                // Manually trigger the 'input' event so the app's state updates
-                instance.element.dispatchEvent(new Event('input', { bubbles: true }));
-            }
+            dateFormat: "Y-m-d", altInput: true, altFormat: "d M, Y",
+            onChange: (selectedDates, dateStr, instance) => instance.element.dispatchEvent(new Event('input', { bubbles: true }))
         });
       });
     }
@@ -1901,6 +2001,9 @@
         if (!inputs) return;
 
         const { daysInRange, rates, allHolidays } = inputs;
+        lastGeneratedRates = rates;
+        lastGeneratedAllHolidays = allHolidays;
+
         const patternSelect = document.getElementById('patternSelect');
         const selectedId = patternSelect.value;
         
@@ -1965,6 +2068,8 @@
         const inputs = getSmartCalulatorInputs();
         if (!inputs) return;
         const { daysInRange, rates, allHolidays } = inputs;
+        lastGeneratedRates = rates;
+        lastGeneratedAllHolidays = allHolidays;
 
         const targetPay = parseFloat(document.getElementById('targetPay').value);
         if (!targetPay || targetPay <= 0) { 
@@ -2035,7 +2140,7 @@
         });
       
         calculatedDailyHours = finalDailyHours;
-        displaySmartResults(calculatedDailyHours, targetPay);
+        displaySmartResults(finalDailyHours, targetPay);
     }
 
     function displaySmartResults(dailyHours, targetPay = null) {
@@ -2068,6 +2173,32 @@
       
       document.getElementById('smartSummary').innerHTML = summaryHTML;
       
+      // --- Update and display hour adjusters ---
+      const adjusterContainer = document.getElementById('hourAdjusterContainer');
+      if (dailyHours.length > 0) {
+        let totals = { weekday: 0, saturday: 0, sunday: 0, holiday: 0 };
+        dailyHours.forEach(day => {
+            const d = new Date(day.date + 'T00:00:00');
+            const dayOfWeek = d.getDay();
+            const isHoliday = lastGeneratedAllHolidays.includes(day.date);
+
+            if (isHoliday) totals.holiday += day.hours;
+            else if (dayOfWeek === 0) totals.sunday += day.hours;
+            else if (dayOfWeek === 6) totals.saturday += day.hours;
+            else totals.weekday += day.hours;
+        });
+
+        document.getElementById('weekdayHoursTotal').value = totals.weekday.toFixed(2) + 'h';
+        document.getElementById('saturdayHoursTotal').value = totals.saturday.toFixed(2) + 'h';
+        document.getElementById('sundayHoursTotal').value = totals.sunday.toFixed(2) + 'h';
+        document.getElementById('holidayHoursTotal').value = totals.holiday.toFixed(2) + 'h';
+
+        adjusterContainer.style.display = 'block';
+      } else {
+        adjusterContainer.style.display = 'none';
+      }
+
+
       const tableRows = dailyHours
         .filter(day => day.hours > 0)
         .sort((a, b) => new Date(a.date) - new Date(b.date))
@@ -2086,7 +2217,9 @@
       document.querySelector('#smartOTTable tbody').innerHTML = tableRows;
       
       document.getElementById('smartResults').style.display = 'block';
-      document.getElementById('smartResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (targetPay) { // Only scroll into view on initial generation
+        document.getElementById('smartResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
 
     function exportToCSV() {
@@ -2191,6 +2324,8 @@
         
         state.ot[currentMonth].push({
           date: day.date,
+          start: day.startTime,
+          end: day.endTime,
           hours: day.hours,
           mult: multiplier,
           notes: 'Generated by Smart OT'
@@ -2290,6 +2425,137 @@
             populatePatternSelector();
             alert(`🗑️ Pattern "${patternName}" deleted.`);
         }
+    }
+
+    // --- AI Suggestion Logic ---
+    function aiSuggestSchedule() {
+        const inputs = getSmartCalulatorInputs();
+        if (!inputs) return;
+        const { daysInRange, rates, allHolidays } = inputs;
+        lastGeneratedRates = rates;
+        lastGeneratedAllHolidays = allHolidays;
+
+        let targetPay = parseFloat(document.getElementById('targetPay').value);
+        if (!targetPay || targetPay <= 0) {
+            alert('Please enter a valid Target OT Pay to generate an AI schedule!');
+            return;
+        }
+
+        // 1. Analyze historical data
+        const history = { weekday: [], saturday: [], sunday: [] };
+        Object.values(state.ot).flat().forEach(entry => {
+            const date = new Date(entry.date + 'T00:00:00');
+            const day = date.getDay();
+            if (day > 0 && day < 6) history.weekday.push(entry.hours);
+            else if (day === 6) history.saturday.push(entry.hours);
+            else if (day === 0) history.sunday.push(entry.hours);
+        });
+
+        const getAvg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+        const avgHours = {
+            weekday: getAvg(history.weekday) || 4, // Default to 4 if no history
+            saturday: getAvg(history.saturday) || 6, // Default to 6
+            sunday: getAvg(history.sunday) || 6, // Default to 6
+        };
+
+        // 2. Map and prioritize all available days in the range
+        let potentialSlots = daysInRange.map(date => {
+            const dateString = formatDateToYyyyMmDd(date);
+            const isHoliday = allHolidays.includes(dateString);
+            const dayOfWeek = date.getDay();
+            
+            let type, rate, maxHours;
+            if (isHoliday) {
+                type = "Overtime 2.0x (Public Holiday)"; rate = rates.holiday; maxHours = avgHours.saturday; // Treat holidays like weekends
+            } else if (dayOfWeek === 0) {
+                type = "Rest Day OT (0.5x)"; rate = rates.restDay; maxHours = avgHours.sunday;
+            } else if (dayOfWeek === 6) {
+                type = "Off Day 1.5x (Saturday)"; rate = rates.offDay; maxHours = avgHours.saturday;
+            } else {
+                type = "Overtime 1.5x (Weekday)"; rate = rates.normalOT; maxHours = avgHours.weekday;
+            }
+            
+            return { date: dateString, day: getDayOfWeek(date), type, rate, hours: 0, maxHours };
+        }).sort((a, b) => b.rate - a.rate); // Sort by highest rate first
+
+        // 3. Iteratively allocate hours to meet the target
+        let remainingPay = targetPay;
+        const hourIncrement = 0.5;
+
+        while (remainingPay > 0) {
+            let allocatedInThisLoop = false;
+            for (const slot of potentialSlots) {
+                if (remainingPay <= 0) break;
+                if (slot.hours < slot.maxHours) {
+                    const payForIncrement = hourIncrement * slot.rate;
+                    if (payForIncrement > 0) {
+                        slot.hours += hourIncrement;
+                        remainingPay -= payForIncrement;
+                        allocatedInThisLoop = true;
+                    }
+                }
+            }
+            if (!allocatedInThisLoop) break;
+        }
+
+        // 4. Format and display results
+        const finalSchedule = potentialSlots
+            .filter(s => s.hours > 0)
+            .map(s => ({
+                ...s,
+                pay: s.hours * s.rate,
+                startTime: generateRandomStartTime(new Date(s.date + 'T00:00:00').getDay()),
+                endTime: calculateEndTime(generateRandomStartTime(new Date(s.date + 'T00:00:00').getDay()), s.hours)
+            }));
+        
+        calculatedDailyHours = finalSchedule;
+        displaySmartResults(finalSchedule, targetPay);
+    }
+
+    // --- Hour Adjuster Logic ---
+    function adjustHours(rateType, amount) {
+        if (calculatedDailyHours.length === 0) return;
+
+        let relevantDays = calculatedDailyHours.filter(day => {
+            const d = new Date(day.date + 'T00:00:00');
+            const dayOfWeek = d.getDay();
+            const isHoliday = lastGeneratedAllHolidays.includes(day.date);
+
+            if (isHoliday) return rateType === 'holiday';
+            if (rateType === 'sunday') return dayOfWeek === 0;
+            if (rateType === 'saturday') return dayOfWeek === 6;
+            if (rateType === 'weekday') return dayOfWeek > 0 && dayOfWeek < 6;
+            return false;
+        });
+
+        if (amount > 0) { // ADDING hours
+            if (relevantDays.length > 0) {
+                let dayToModify = relevantDays.reduce((prev, curr) => prev.hours < curr.hours ? prev : curr);
+                dayToModify.hours += amount;
+            } else {
+                alert(`No ${rateType} days in the generated schedule to add hours to.`);
+                return;
+            }
+        } else { // SUBTRACTING hours
+            let daysWithHours = relevantDays.filter(d => d.hours > 0);
+            if (daysWithHours.length > 0) {
+                let dayToModify = daysWithHours.reduce((prev, curr) => prev.hours > curr.hours ? prev : curr);
+                dayToModify.hours += amount;
+                dayToModify.hours = Math.max(0, dayToModify.hours);
+            } else {
+                return; // No hours to subtract
+            }
+        }
+
+        // Recalculate pay for all entries and redisplay
+        calculatedDailyHours.forEach(day => {
+            day.pay = day.hours * day.rate;
+            day.endTime = calculateEndTime(day.startTime, day.hours);
+        });
+        
+        calculatedDailyHours = calculatedDailyHours.filter(d => d.hours > 0);
+
+        displaySmartResults(calculatedDailyHours, null);
     }
 
 
@@ -2589,7 +2855,7 @@
         const key = monthSelect.value;
         if (!state.ot[key]) state.ot[key] = [];
         const todayStr = new Date().toISOString().split('T')[0];
-        state.ot[key].push({ date: todayStr, hours: 0, mult: 1.5, notes: '' });
+        state.ot[key].push({ date: todayStr, start: '', end: '', hours: 0, mult: 1.5, notes: '' });
         saveState();
         refresh();
       });
@@ -2667,28 +2933,28 @@
       // Prefill July with known entries if empty
       if (!state.ot['2025-07'] || state.ot['2025-07'].length === 0) {
         state.ot['2025-07'] = [
-          {date:'2025-07-24', hours:6.00, mult:1.5, notes: ''},
-          {date:'2025-07-23', hours:5.50, mult:1.5, notes: ''},
-          {date:'2025-07-22', hours:5.50, mult:1.5, notes: ''},
-          {date:'2025-07-21', hours:4.50, mult:1.5, notes: ''},
-          {date:'2025-07-20', hours:4.00, mult:0.5, notes: ''},
-          {date:'2025-07-19', hours:4.50, mult:1.5, notes: ''},
-          {date:'2025-07-18', hours:4.50, mult:1.5, notes: ''},
-          {date:'2025-07-17', hours:5.50, mult:1.5, notes: ''},
-          {date:'2025-07-16', hours:6.50, mult:1.5, notes: ''},
-          {date:'2025-07-15', hours:7.00, mult:1.5, notes: ''},
-          {date:'2025-07-14', hours:3.50, mult:1.5, notes: ''},
-          {date:'2025-07-11', hours:5.00, mult:1.5, notes: ''},
-          {date:'2025-07-10', hours:6.50, mult:1.5, notes: ''},
-          {date:'2025-07-09', hours:6.00, mult:1.5, notes: ''},
-          {date:'2025-07-08', hours:6.50, mult:1.5, notes: ''},
-          {date:'2025-07-07', hours:5.92, mult:1.5, notes: ''},
-          {date:'2025-07-06', hours:4.00, mult:0.5, notes: ''},
-          {date:'2025-07-05', hours:4.00, mult:1.5, notes: ''},
-          {date:'2025-07-04', hours:5.00, mult:1.5, notes: ''},
-          {date:'2025-07-03', hours:6.00, mult:1.5, notes: ''},
-          {date:'2025-07-02', hours:4.50, mult:1.5, notes: ''},
-          {date:'2025-07-01', hours:7.50, mult:1.5, notes: ''}
+          {date:'2025-07-24', start: '19:00', end: '01:00', hours:6.00, mult:1.5, notes: ''},
+          {date:'2025-07-23', start: '19:00', end: '00:30', hours:5.50, mult:1.5, notes: ''},
+          {date:'2025-07-22', start: '19:00', end: '00:30', hours:5.50, mult:1.5, notes: ''},
+          {date:'2025-07-21', start: '19:00', end: '23:30', hours:4.50, mult:1.5, notes: ''},
+          {date:'2025-07-20', start: '10:00', end: '14:00', hours:4.00, mult:0.5, notes: ''},
+          {date:'2025-07-19', start: '10:00', end: '14:30', hours:4.50, mult:1.5, notes: ''},
+          {date:'2025-07-18', start: '19:00', end: '23:30', hours:4.50, mult:1.5, notes: ''},
+          {date:'2025-07-17', start: '19:00', end: '00:30', hours:5.50, mult:1.5, notes: ''},
+          {date:'2025-07-16', start: '19:00', end: '01:30', hours:6.50, mult:1.5, notes: ''},
+          {date:'2025-07-15', start: '19:00', end: '02:00', hours:7.00, mult:1.5, notes: ''},
+          {date:'2025-07-14', start: '19:00', end: '22:30', hours:3.50, mult:1.5, notes: ''},
+          {date:'2025-07-11', start: '19:00', end: '00:00', hours:5.00, mult:1.5, notes: ''},
+          {date:'2025-07-10', start: '19:00', end: '01:30', hours:6.50, mult:1.5, notes: ''},
+          {date:'2025-07-09', start: '19:00', end: '01:00', hours:6.00, mult:1.5, notes: ''},
+          {date:'2025-07-08', start: '19:00', end: '01:30', hours:6.50, mult:1.5, notes: ''},
+          {date:'2025-07-07', start: '19:00', end: '00:55', hours:5.92, mult:1.5, notes: ''},
+          {date:'2025-07-06', start: '10:00', end: '14:00', hours:4.00, mult:0.5, notes: ''},
+          {date:'2025-07-05', start: '10:00', end: '14:00', hours:4.00, mult:1.5, notes: ''},
+          {date:'2025-07-04', start: '19:00', end: '00:00', hours:5.00, mult:1.5, notes: ''},
+          {date:'2025-07-03', start: '19:00', end: '01:00', hours:6.00, mult:1.5, notes: ''},
+          {date:'2025-07-02', start: '19:00', end: '23:30', hours:4.50, mult:1.5, notes: ''},
+          {date:'2025-07-01', start: '19:00', end: '02:30', hours:7.50, mult:1.5, notes: ''}
         ];
         saveState();
       }
