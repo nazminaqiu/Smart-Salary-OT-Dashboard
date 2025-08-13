@@ -7,12 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Added Flatpickr CSS for the new date picker -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <!-- Added Flatpickr JS for the new date picker -->
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <style>
     :root {
@@ -53,7 +51,7 @@
     }
     
     .wrap { 
-      max-width: 1600px; 
+      max-width: 1800px; 
       margin: 32px auto; 
       padding: 0 24px;
       animation: fadeIn 0.8s cubic-bezier(0.25, 1, 0.5, 1);
@@ -107,11 +105,15 @@
     .grid-3 { grid-template-columns: repeat(3, 1fr) }
     .grid-4 { 
       grid-template-columns: repeat(4, 1fr);
-      align-items: end; /* This will align items to the bottom */
+      align-items: end; 
+    }
+    .grid-6 { 
+      grid-template-columns: repeat(6, 1fr);
+      align-items: end; 
     }
     
-    @media (max-width: 1200px) { .grid-4 { grid-template-columns: repeat(2, 1fr) } }
-    @media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr } }
+    @media (max-width: 1200px) { .grid-4, .grid-6 { grid-template-columns: repeat(3, 1fr) } }
+    @media (max-width: 900px) { .grid-2, .grid-3, .grid-4, .grid-6 { grid-template-columns: 1fr } }
     
     label { 
       font-size: 14px; 
@@ -164,8 +166,12 @@
       align-items: center;
       gap: 8px;
     }
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
     
-    .btn:hover { 
+    .btn:hover:not(:disabled) { 
       background: var(--accent);
       border-color: var(--accent);
       color: var(--bg-primary);
@@ -179,7 +185,7 @@
       border-color: transparent;
     }
     
-    .btn.primary:hover {
+    .btn.primary:hover:not(:disabled) {
       box-shadow: 0 8px 16px rgba(255, 121, 198, 0.3);
     }
     
@@ -188,7 +194,7 @@
         border-color: var(--border);
         color: var(--muted);
     }
-    .btn.ghost:hover { 
+    .btn.ghost:hover:not(:disabled) { 
         background: var(--card-hover);
         color: var(--text);
         border-color: var(--border-light);
@@ -212,7 +218,7 @@
       text-align: left;
     }
     
-    #otTable tbody td {
+    #otTable tbody td, #expensesTable tbody td {
         vertical-align: middle;
     }
     
@@ -225,7 +231,27 @@
       background: rgba(22, 22, 37, 0.5);
       position: sticky;
       top: 0;
+      z-index: 1;
     }
+
+    #expensesTable th, #expenseAnalysisTable th {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    #expensesTable th.sort-asc::after, #expensesTable th.sort-desc::after,
+    #expenseAnalysisTable th.sort-asc::after, #expenseAnalysisTable th.sort-desc::after {
+        content: '';
+        display: inline-block;
+        margin-left: 8px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+    }
+    #expensesTable th.sort-asc::after, #expenseAnalysisTable th.sort-asc::after { border-bottom: 5px solid var(--accent); }
+    #expensesTable th.sort-desc::after, #expenseAnalysisTable th.sort-desc::after { border-top: 5px solid var(--accent); }
+
     
     tbody tr {
         transition: background-color 0.2s ease;
@@ -235,9 +261,15 @@
       background: rgba(42, 42, 74, 0.5);
     }
     
+    tfoot {
+      position: sticky;
+      bottom: 0;
+      z-index: 1;
+    }
+
     tfoot td { 
       font-weight: 700;
-      background: rgba(22, 22, 37, 0.3);
+      background: var(--card);
       border-top: 2px solid var(--border-light);
     }
     
@@ -264,6 +296,14 @@
       background: linear-gradient(145deg, var(--card), var(--bg-secondary));
       transition: var(--transition);
     }
+
+    .stat.secondary {
+        flex-direction: row;
+        padding: 16px 20px;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--bg-secondary);
+    }
     
     .stat:hover {
       border-color: var(--border-light);
@@ -279,6 +319,9 @@
       align-items: baseline;
       gap: 4px;
     }
+    .stat.secondary .value {
+        font-size: 22px;
+    }
     .stat .value .currency {
         font-size: 18px;
         font-weight: 500;
@@ -289,6 +332,9 @@
       color: var(--muted);
       font-size: 14px;
       font-weight: 500;
+    }
+    .stat.secondary .label {
+        font-size: 16px;
     }
     
     .muted { color: var(--muted) }
@@ -474,7 +520,6 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 16px;
     }
     
     .toggle-label {
@@ -594,7 +639,7 @@
     .ot-restday { background: rgba(255, 85, 85, 0.2); color: var(--danger); }
     
     /* Hour Adjuster Styles */
-    #hourAdjusterContainer .grid-4 {
+    .hour-adjuster-panel .grid-4 {
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     }
     .adjuster-item {
@@ -863,6 +908,179 @@
         border-bottom-right-radius: var(--radius-sm);
     }
 
+    /* Expenses Tab Styles */
+    .expenses-grid {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr;
+      gap: 24px;
+    }
+
+    #addExpenseForm {
+      display: grid;
+      grid-template-columns: 0.75fr 1.2fr 1fr 1fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: end;
+      margin-top: 16px;
+    }
+    
+    .expense-note {
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+     .action-buttons .btn {
+        padding: 6px 10px;
+        font-size: 16px;
+     }
+
+    /* Infographic Styles */
+    #expenseInfographicContainer {
+        margin-top: 16px;
+        padding: 4px;
+    }
+    .category-item {
+        background: rgba(22, 22, 37, 0.5);
+        border-radius: var(--radius-sm);
+        padding: 16px;
+        margin-bottom: 12px;
+        border: 1px solid var(--border);
+    }
+    .category-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+    .category-total {
+        color: var(--text);
+    }
+    .progress-bar-wrapper {
+        display: flex;
+        height: 10px;
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--bg-secondary);
+        margin-bottom: 8px;
+    }
+    .progress-bar-user {
+        background: var(--warning);
+        transition: width 0.3s ease;
+    }
+    .progress-bar-partner {
+        background: var(--accent);
+        transition: width 0.3s ease;
+    }
+    .category-breakdown {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--muted);
+    }
+     .category-breakdown span:last-child {
+        text-align: right;
+    }
+    /* NEW: Budget Progress Bar */
+    .budget-progress-bar-container {
+        height: 6px;
+        background: var(--bg-secondary);
+        border-radius: 6px;
+        margin: 8px 0 4px 0;
+    }
+    .budget-progress-bar-fill {
+        height: 100%;
+        background-color: var(--success);
+        border-radius: 6px;
+    }
+
+    /* MODAL STYLES (for Budgeting and Annual Summary) */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(5px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    .modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+    .modal-content {
+        background: var(--card);
+        padding: 32px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        width: 90%;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow-y: auto;
+        transform: scale(0.9);
+        transition: transform 0.3s ease;
+    }
+    .modal-overlay.active .modal-content {
+        transform: scale(1);
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 16px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--border);
+    }
+    .modal-header h2 {
+        margin: 0;
+    }
+    .modal-close-btn {
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        font-size: 28px;
+        cursor: pointer;
+        line-height: 1;
+    }
+    .budget-item, .annual-summary-item {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+     .annual-summary-item {
+        grid-template-columns: 1fr 1fr;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-light);
+    }
+    .budget-item label {
+        margin-bottom: 0;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    @media (max-width: 900px) {
+      .expenses-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
 
     @media (max-width: 768px) {
       .wrap { padding: 0 16px; }
@@ -874,6 +1092,9 @@
       .tab { padding: 12px 16px; font-size: 14px; }
       .form-row { grid-template-columns: 1fr; }
       .form-row-custom-pattern { grid-template-columns: 1fr 1fr; }
+      #addExpenseForm {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -882,24 +1103,22 @@
     <header>
       <h1>Salary & OT Dashboard</h1>
       <div class="row">
-        <span class="pill">💡 Hourly rate is auto-calculated</span>
+        <button class="btn ghost" id="viewAnnualSummaryBtn">🗓️ View Annual Summary</button>
         <button class="btn ghost" id="exportData">📤 Export Data</button>
         <button class="btn ghost" id="importData">📥 Import Data</button>
         <button class="btn ghost" id="resetAll">🔄 Reset data</button>
       </div>
     </header>
 
-    <!-- Tab Navigation -->
     <div class="tabs">
       <button class="tab active" onclick="switchTab('manual', this)">📊 Manual Tracking</button>
       <button class="tab" onclick="switchTab('smart', this)">🤖 Smart Calculator</button>
+      <button class="tab" onclick="switchTab('expenses', this)">💸 Monthly Expenses</button>
       <button class="tab" onclick="switchTab('forecast', this)">🔮 Forecast</button>
     </div>
 
-    <!-- Manual Tracking Tab -->
     <div id="manual-tab" class="tab-content active">
       <div class="grid grid-2">
-        <!-- Controls -->
         <div class="card panel">
           <div class="split">
             <h2 class="section-title">⚙️ Settings</h2>
@@ -914,12 +1133,12 @@
               <button id="deductionModeActual" class="active" onclick="setDeductionMode('actual')">Actual (RM)</button>
           </div>
 
-          <div class="grid grid-4" style="margin-top: 20px">
+          <div class="grid grid-6" style="margin-top: 20px; grid-row-gap: 20px;">
             <div>
               <label>💵 Basic Salary (RM)</label>
               <input type="number" id="basic" step="0.01" />
             </div>
-            <div>
+             <div>
               <label>📋 Claims (RM)</label>
               <input type="number" id="claims" step="0.01" />
             </div>
@@ -932,14 +1151,19 @@
               <input type="number" id="incentive" step="0.01" />
             </div>
             <div>
-              <label>💸 Cash Advance (RM)</label>
-              <input type="number" id="advance" step="0.01" />
+              <label>⏰ Hourly Rate (RM)</label>
+              <input type="number" id="hourly" step="0.0001" readonly />
             </div>
             <div>
-               <label>💰 Net Income Goal (RM)</label>
-               <input type="number" id="incomeGoal" step="0.01" />
+                 <div class="toggle-group" style="justify-content: flex-end; margin-bottom: 8px;">
+                    <label class="switch">
+                        <input type="checkbox" id="smartGoalToggle">
+                        <span class="slider"></span>
+                    </label>
+                    <label for="smartGoalToggle" class="toggle-label" style="margin-bottom: 0;">✨ Smart Goal</label>
+                </div>
             </div>
-            <div>
+             <div>
               <label id="epfLabel">🏦 EPF (RM)</label>
               <input type="number" id="epf" step="0.01" />
             </div>
@@ -955,19 +1179,28 @@
               <label id="eisLabel">⚡ EIS (RM)</label>
               <input type="number" id="eis" step="0.01" />
             </div>
-             <div>
-              <label>⏰ Hourly Rate (RM)</label>
-              <input type="number" id="hourly" step="0.0001" readonly />
+            <div>
+              <label>💸 Cash Advance (RM)</label>
+              <input type="number" id="advance" step="0.01" />
+            </div>
+            <div id="desiredSavingsContainer" style="display: none;">
+                <label>🏦 Desired End-of-Month Balance (RM)</label>
+                <input type="number" id="desiredSavings" step="0.01" />
             </div>
           </div>
-          <div class="row" style="margin-top: 20px; justify-content: flex-end">
+           <div class="grid" style="margin-top: 20px; grid-template-columns: 1fr;">
+                 <div>
+                   <label>💰 Net Income Goal (RM)</label>
+                   <input type="number" id="incomeGoal" step="0.01" />
+                </div>
+           </div>
+          <div class="row" style="margin-top: 28px; justify-content: flex-end">
             <button id="copyLastMonth" class="btn ghost">📋 Copy Last Month</button>
             <button id="saveParams" class="btn primary">💾 Save Settings</button>
           </div>
           <div id="saveMessage" style="display: none;"></div>
         </div>
 
-        <!-- Dashboard quick stats -->
         <div class="card panel">
           <h2 class="section-title" style="margin-bottom: 20px">📈 Quick Stats</h2>
           <div class="grid grid-3">
@@ -976,26 +1209,76 @@
               <div class="value" id="grossOut">RM 0.00</div>
             </div>
             <div class="stat">
-              <div class="label">💸 Total Deductions</div>
-              <div class="value" id="deductOut" style="color: var(--warning)">RM 0.00</div>
-            </div>
-            <div class="stat">
               <div class="label">✅ Net Pay</div>
               <div class="value" id="netOut" style="color: var(--success)">RM 0.00</div>
             </div>
+            <div class="stat">
+              <div class="label">🏦 Remaining Balance</div>
+              <div class="value" id="balanceOut" style="color: var(--success)">RM 0.00</div>
+            </div>
           </div>
-          <div id="incomeGoalVisualizer" class="income-goal-visualizer" style="display: none;">
+          <div class="grid grid-2" style="margin-top: 16px;">
+            <div class="stat secondary">
+                <div class="label">💸 Total Deductions</div>
+                <div class="value" id="deductOut" style="color: var(--warning)">RM 0.00</div>
+            </div>
+            <div class="stat secondary">
+                <div class="label">📉 Total Expenses</div>
+                <div class="value" id="expensesOut" style="color: var(--danger)">RM 0.00</div>
+            </div>
+          </div>
+          <div id="incomeGoalVisualizer" class="income-goal-visualizer">
               <div class="label">🎯 Progress to Net Income Goal</div>
               <div class="progress-bar-container">
                   <div id="progressBarFill" class="progress-bar-fill"></div>
                   <div id="progressBarText" class="progress-bar-text"></div>
               </div>
-              <div id="hoursToGoalHelper" class="hours-to-goal-helper" style="display: none;"></div>
+              <div id="hoursToGoalHelper" class="hours-to-goal-helper"></div>
           </div>
         </div>
       </div>
+      
+      <div class="card panel hour-adjuster-panel" id="manualHourAdjusterContainer" style="display: none; margin-top: 24px;">
+          <h4>🔧 Fine-Tune Schedule</h4>
+           <div style="text-align: center; margin-bottom: 16px; font-size: 16px;">
+                <span>Total OT Pay: </span><strong id="manualTotalOtPayAdjuster" style="color: var(--accent); font-size: 18px;">RM 0.00</strong>
+            </div>
+          <div class="grid grid-4">
+              <div class="adjuster-item">
+                  <label>Weekday (1.5x)</label>
+                  <div class="adjuster-controls">
+                      <button class="btn ghost" onclick="adjustManualHours('weekday', -0.5)">-</button>
+                      <input type="text" id="manualWeekdayHoursTotal" readonly>
+                      <button class="btn ghost" onclick="adjustManualHours('weekday', 0.5)">+</button>
+                  </div>
+              </div>
+              <div class="adjuster-item">
+                  <label>Saturday (1.5x)</label>
+                  <div class="adjuster-controls">
+                      <button class="btn ghost" onclick="adjustManualHours('saturday', -0.5)">-</button>
+                      <input type="text" id="manualSaturdayHoursTotal" readonly>
+                      <button class="btn ghost" onclick="adjustManualHours('saturday', 0.5)">+</button>
+                  </div>
+              </div>
+              <div class="adjuster-item">
+                  <label>Sunday (0.5x)</label>
+                  <div class="adjuster-controls">
+                      <button class="btn ghost" onclick="adjustManualHours('sunday', -0.5)">-</button>
+                      <input type="text" id="manualSundayHoursTotal" readonly>
+                      <button class="btn ghost" onclick="adjustManualHours('sunday', 0.5)">+</button>
+                  </div>
+              </div>
+              <div class="adjuster-item">
+                  <label>Holiday (2.0x)</label>
+                  <div class="adjuster-controls">
+                      <button class="btn ghost" onclick="adjustManualHours('holiday', -0.5)">-</button>
+                      <input type="text" id="manualHolidayHoursTotal" readonly>
+                      <button class="btn ghost" onclick="adjustManualHours('holiday', 0.5)">+</button>
+                  </div>
+              </div>
+          </div>
+      </div>
 
-      <!-- OT Table -->
       <div class="card panel" style="margin-top: 24px">
         <div class="split">
           <h2 class="section-title">⏰ Overtime Sessions (<span id="monthLabel"></span>)</h2>
@@ -1030,7 +1313,6 @@
         </div>
       </div>
 
-      <!-- Month breakdown + charts -->
       <div class="grid grid-2" style="margin-top: 24px">
         <div class="card panel">
           <h2 class="section-title" style="margin-bottom: 20px">📊 Breakdown</h2>
@@ -1050,31 +1332,33 @@
                 <tr><td class="muted">💸 Cash Advance</td><td id="bAdv" style="color: var(--warning)">RM 0.00</td></tr>
                 <tr><td style="font-weight: 600; color: var(--warning)">💸 Total Deductions</td><td id="bDeduct" style="font-weight: 600; color: var(--warning)">RM 0.00</td></tr>
                 <tr><td style="font-weight: 700; color: var(--success)">✅ Net Pay</td><td id="bNet" style="font-weight: 700; color: var(--success)">RM 0.00</td></tr>
+                <tr><td class="muted">📉 Total Expenses</td><td id="bExpenses" style="color: var(--danger)">RM 0.00</td></tr>
+                <tr style="border-top: 2px solid var(--border-light);"><td style="font-weight: 700; font-size: 18px; color: var(--success)">🏦 Remaining Balance</td><td id="bBalance" style="font-weight: 700; font-size: 18px; color: var(--success)">RM 0.00</td></tr>
               </tbody>
             </table>
           </div>
         </div>
         
         <div class="card panel">
-          <h2 class="section-title" style="margin-bottom: 20px">📈 Monthly Comparison</h2>
+          <div class="split">
+            <h2 class="section-title">📈 Income Composition</h2>
+            <p class="muted small">Monthly Gross Pay Breakdown</p>
+          </div>
           <div class="chart-container">
             <canvas id="chartGrossNet"></canvas>
           </div>
-          <div class="chart-container">
+          <div class="chart-container" style="margin-top: 32px">
             <canvas id="chartOT"></canvas>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Smart Calculator Tab -->
     <div id="smart-tab" class="tab-content">
       <div class="card panel">
         <h2 class="section-title" style="margin-bottom: 20px">🤖 Smart OT Calculator</h2>
-        <p class="muted" style="margin-bottom: 24px">Plan your overtime by applying a template or calculating hours to meet a specific financial target.</p>
         
         <div class="smart-form">
-          <!-- Basic Settings -->
           <div class="form-section">
             <h4>💰 Basic Information</h4>
             <div class="form-row">
@@ -1093,51 +1377,7 @@
             </div>
             <div id="smartHourlyRateDisplay" style="background: rgba(80, 250, 123, 0.1); border: 1px solid rgba(80, 250, 123, 0.3); color: var(--success); padding: 12px; border-radius: var(--radius-sm); margin-top: 12px; text-align: center; font-weight: 600; display: none;"></div>
           </div>
-
-          <!-- OT Pattern Templates -->
-          <div class="form-section">
-            <h4>📝 OT Pattern Templates</h4>
-            <div class="form-row">
-                <div style="grid-column: 1 / -1;">
-                    <label for="patternSelect">Select a Pattern</label>
-                    <div style="display: flex; gap: 8px;">
-                        <select id="patternSelect" style="flex: 1;"></select>
-                        <button class="btn" id="applyPatternBtn">🚀 Apply Pattern</button>
-                        <button class="btn danger ghost" id="deletePatternBtn" title="Delete selected custom pattern">🗑️</button>
-                    </div>
-                </div>
-            </div>
-            <h5 style="font-size: 16px; color: var(--muted); margin-top: 24px; margin-bottom: 16px; font-weight: 500;">Create a Custom Pattern</h5>
-            <div class="form-row-custom-pattern">
-                <div><label>Mon</label><input type="number" step="0.5" min="0" id="customPatternMon" placeholder="0"></div>
-                <div><label>Tue</label><input type="number" step="0.5" min="0" id="customPatternTue" placeholder="0"></div>
-                <div><label>Wed</label><input type="number" step="0.5" min="0" id="customPatternWed" placeholder="0"></div>
-                <div><label>Thu</label><input type="number" step="0.5" min="0" id="customPatternThu" placeholder="0"></div>
-                <div><label>Fri</label><input type="number" step="0.5" min="0" id="customPatternFri" placeholder="0"></div>
-                <div><label>Sat</label><input type="number" step="0.5" min="0" id="customPatternSat" placeholder="0"></div>
-                <div><label>Sun</label><input type="number" step="0.5" min="0" id="customPatternSun" placeholder="0"></div>
-                <div><label>Pattern Name</label><input type="text" id="customPatternName" placeholder="e.g. Client ABC Rush"></div>
-                <div><label>&nbsp;</label><button class="btn success" id="savePatternBtn">💾 Save</button></div>
-            </div>
-          </div>
-
-          <!-- Target-based Calculator -->
-          <div class="form-section">
-            <h4>🎯 Target-Based Calculator</h4>
-            <div class="form-row">
-              <div>
-                <label>Target OT Pay (RM)</label>
-                <input type="number" id="targetPay" step="0.01" placeholder="4000">
-              </div>
-            </div>
-             <div class="row" style="justify-content: center; margin-top: 16px; gap: 16px;">
-                <button class="btn primary" style="padding: 12px 24px; font-size: 16px;" onclick="calculateSmartOT()">✨ Calculate to Target</button>
-                <button class="btn success" style="padding: 12px 24px; font-size: 16px;" onclick="aiSuggestSchedule()">🤖 AI Suggest Schedule</button>
-            </div>
-          </div>
-
-
-          <!-- Public Holidays -->
+          
           <div class="form-section">
             <h4>🏖️ Public Holidays (2025)</h4>
             <div class="holiday-checklist" id="holidayChecklist"></div>
@@ -1152,15 +1392,76 @@
             </div>
             <div id="holidayList" style="margin-top: 12px;"></div>
           </div>
+          
+          <div class="form-section">
+            <h4>⚙️ AI Schedule Constraints</h4>
+             <div class="form-row">
+                 <div>
+                    <label>Unavailable / Blackout Dates</label>
+                    <input type="text" id="blackoutDates" placeholder="Select dates you cannot work...">
+                 </div>
+                 <div>
+                    <label>Work Style Preference</label>
+                    <select id="workStylePreference">
+                        <option value="balanced">Balanced (Default)</option>
+                        <option value="long_days">Prefer Fewer, Longer Days</option>
+                        <option value="short_sessions">Prefer More, Shorter Sessions</option>
+                    </select>
+                 </div>
+             </div>
+          </div>
+
+          <div class="form-section">
+            <h4>📝 OT Pattern Templates</h4>
+            <div class="form-row">
+                <div style="grid-column: 1 / -1;">
+                    <label for="patternSelect">Select a Pattern</label>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="patternSelect" style="flex: 1;"></select>
+                        <button class="btn" id="applyPatternBtn">🚀 Apply Pattern</button>
+                        <button class="btn ghost" id="editPatternBtn" title="Edit selected custom pattern">✏️ Edit</button>
+                        <button class="btn danger ghost" id="deletePatternBtn" title="Delete selected custom pattern">🗑️</button>
+                    </div>
+                </div>
+            </div>
+            <h5 style="font-size: 16px; color: var(--muted); margin-top: 24px; margin-bottom: 16px; font-weight: 500;">Create or Edit a Custom Pattern</h5>
+            <div class="form-row-custom-pattern">
+                <div><label>Mon</label><input type="number" step="0.5" min="0" id="customPatternMon" placeholder="0"></div>
+                <div><label>Tue</label><input type="number" step="0.5" min="0" id="customPatternTue" placeholder="0"></div>
+                <div><label>Wed</label><input type="number" step="0.5" min="0" id="customPatternWed" placeholder="0"></div>
+                <div><label>Thu</label><input type="number" step="0.5" min="0" id="customPatternThu" placeholder="0"></div>
+                <div><label>Fri</label><input type="number" step="0.5" min="0" id="customPatternFri" placeholder="0"></div>
+                <div><label>Sat</label><input type="number" step="0.5" min="0" id="customPatternSat" placeholder="0"></div>
+                <div><label>Sun</label><input type="number" step="0.5" min="0" id="customPatternSun" placeholder="0"></div>
+                <div><label>Pattern Name</label><input type="text" id="customPatternName" placeholder="e.g. Client ABC Rush"></div>
+                <div><label>&nbsp;</label><button class="btn success" id="savePatternBtn">💾 Save New Pattern</button></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-section" style="margin-bottom: 24px;">
+            <h4>🎯 Target-Based Calculator</h4>
+            <div class="form-row">
+              <div>
+                <label>Target OT Pay (RM)</label>
+                <input type="number" id="targetPay" step="0.01" placeholder="4000">
+              </div>
+            </div>
+             <div class="row" style="justify-content: center; margin-top: 16px; gap: 16px;">
+                <button class="btn primary" style="padding: 12px 24px; font-size: 16px;" onclick="calculateSmartOT()">✨ Calculate to Target</button>
+                <button class="btn success" style="padding: 12px 24px; font-size: 16px;" onclick="aiSuggestSchedule()">🤖 AI Suggest Schedule</button>
+            </div>
         </div>
 
-        <!-- Results Section -->
+
         <div id="smartResults" style="display: none;">
           <div class="results-summary" id="smartSummary"></div>
           
-          <!-- Hour Adjuster -->
-          <div class="form-section" id="hourAdjusterContainer" style="display: none;">
+          <div class="form-section hour-adjuster-panel" id="smartHourAdjusterContainer" style="display: none;">
               <h4>🔧 Fine-Tune Schedule</h4>
+               <div style="text-align: center; margin-bottom: 16px; font-size: 16px;">
+                    <span>Total OT Pay: </span><strong id="smartTotalOtPayAdjuster" style="color: var(--accent); font-size: 18px;">RM 0.00</strong>
+                </div>
               <div class="grid grid-4">
                   <div class="adjuster-item">
                       <label>Weekday (1.5x)</label>
@@ -1227,7 +1528,111 @@
       </div>
     </div>
     
-    <!-- Forecast Tab -->
+    <div id="expenses-tab" class="tab-content">
+        <div class="expenses-grid">
+            <div class="card panel">
+                <div class="split" style="margin-bottom: 16px;">
+                    <h2 class="section-title">💸 Monthly Expenses (<span id="expensesMonthLabel"></span>)</h2>
+                     <div class="row">
+                        <button class="btn ghost" id="copyRecurringExpensesBtn">📋 Copy Recurring from Last Month</button>
+                        <button class="btn ghost" id="clearExpensesBtn">🗑️ Clear All</button>
+                    </div>
+                </div>
+                <input type="text" id="expenseSearch" placeholder="🔍 Search expenses..." style="margin-bottom: 16px;">
+
+                <div class="table-container" style="margin-top: 0;">
+                    <table id="expensesTable">
+                        <thead>
+                            <tr>
+                                <th data-sort="date">Date</th>
+                                <th data-sort="desc">Description</th>
+                                <th data-sort="category">Category</th>
+                                <th data-sort="fullAmount">Total Cost</th>
+                                <th data-sort="amount">My Cost</th>
+                                <th data-sort="partnerShare">Partner's Cost</th>
+                                <th>Notes</th>
+                                <th style="width: 120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" style="text-align:right;">Partner's Total</td>
+                                <td id="expensesPartnerTotal" style="color: var(--accent); font-weight: 700;">RM 0.00</td>
+                                <td style="text-align:right;">My Total</td>
+                                <td id="expensesMyTotal" style="color: var(--danger); font-weight: 700;">RM 0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <h3 class="section-title" style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 20px;">➕ Add / Edit Expense</h3>
+                <form id="addExpenseForm">
+                    <div>
+                        <label for="expenseDate">Date</label>
+                        <input type="text" id="expenseDate" required>
+                    </div>
+                    <div>
+                        <label for="expenseDesc">Description</label>
+                        <input type="text" id="expenseDesc" placeholder="e.g., Groceries" required>
+                    </div>
+                    <div>
+                        <label for="expenseCat">Category</label>
+                        <input type="text" id="expenseCat" placeholder="e.g., Food" list="expenseCategories" required>
+                        <datalist id="expenseCategories">
+                            <option value="Food & Dining">
+                            <option value="Transportation">
+                            <option value="Bills & Utilities">
+                            <option value="Housing">
+                            <option value="Shopping">
+                            <option value="Entertainment">
+                            <option value="Health & Fitness">
+                            <option value="Personal Care">
+                            <option value="Education">
+                            <option value="Miscellaneous">
+                        </datalist>
+                    </div>
+                    <div>
+                        <label for="expenseMyShare">My Share (RM)</label>
+                        <input type="number" id="expenseMyShare" step="0.01" placeholder="50.00">
+                    </div>
+                    <div>
+                        <label for="expensePartnerShare">Partner's Share (RM)</label>
+                        <input type="number" id="expensePartnerShare" step="0.01" placeholder="50.00">
+                    </div>
+                     <div>
+                        <label for="expenseNotes">Notes (Optional)</label>
+                        <input type="text" id="expenseNotes" placeholder="e.g., Dinner with family">
+                    </div>
+                    <div class="form-actions" style="display: flex; flex-direction: column; gap: 8px;">
+                        <div class="toggle-group" style="margin-top: auto; margin-bottom: 8px;">
+                             <label class="switch">
+                                <input type="checkbox" id="isRecurringToggle">
+                                <span class="slider"></span>
+                            </label>
+                            <label for="isRecurringToggle" class="toggle-label" style="margin-bottom: 0;">Mark as Recurring</label>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="submit" id="addExpenseBtn" class="btn primary" style="flex: 1; height: 49px;">➕ Add</button>
+                            <button type="button" id="cancelEditBtn" class="btn ghost" style="display: none; height: 49px;">❌</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="card panel">
+                <div class="split">
+                    <h2 class="section-title">📊 Expense Analysis</h2>
+                    <button class="btn ghost" id="setBudgetsBtn">💰 Set Budgets</button>
+                </div>
+                 <div class="chart-container" style="height: 200px; margin-bottom: 24px;">
+                    <canvas id="expensePieChart"></canvas>
+                </div>
+                <div id="expenseInfographicContainer" class="expense-analysis-container"></div>
+            </div>
+        </div>
+    </div>
+
+
     <div id="forecast-tab" class="tab-content">
         <div class="forecast-grid">
             <div class="card panel forecast-card">
@@ -1281,22 +1686,57 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="budgetModal">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h2 class="section-title">💰 Set Monthly Budgets</h2>
+              <button class="modal-close-btn">&times;</button>
+          </div>
+          <div id="budgetForm">
+              </div>
+           <div class="row" style="margin-top: 28px; justify-content: flex-end">
+                <button id="saveBudgetsBtn" class="btn primary">💾 Save Budgets</button>
+            </div>
+      </div>
+  </div>
+
+  <div class="modal-overlay" id="annualSummaryModal">
+       <div class="modal-content" style="max-width: 800px;">
+          <div class="modal-header">
+              <div style="display: flex; align-items: center; gap: 16px;">
+                 <h2 class="section-title">🗓️ Annual Summary</h2>
+                 <select id="annualSummaryYearSelect"></select>
+              </div>
+              <button class="modal-close-btn">&times;</button>
+          </div>
+          <div id="annualSummaryContent">
+              </div>
+      </div>
+  </div>
+
   <script>
     // --- Global Variables ---
     let publicHolidays = [];
     let calculatedDailyHours = [];
     let lastGeneratedRates = {};
     let lastGeneratedAllHolidays = [];
-    let chartGrossNet, chartOT;
+    let chartGrossNet, chartOT, expensePieChart; // Added expensePieChart
     let months = []; // Will be populated dynamically
+    let expenseSort = { key: 'date', order: 'desc' };
+    let editingExpenseId = null;
+    let editingPatternId = null; // NEW: For editing OT patterns
+
+    // --- Static Data ---
+    const expenseCategories = ["Food & Dining", "Transportation", "Bills & Utilities", "Housing", "Shopping", "Entertainment", "Health & Fitness", "Personal Care", "Education", "Miscellaneous"];
+
 
     // --- OT Pattern Data ---
     const otPatterns = {
         predefined: [
-            { id: 'crunch', name: '🚀 Project Crunch Week', pattern: [4, 5, 6, 5, 4, 0, 0] }, // Mon-Sun hours
-            { id: 'warrior', name: '⚡ Weekend Warrior', pattern: [0, 0, 0, 0, 0, 8, 8] },
-            { id: 'steady', name: '🌱 Steady Grind', pattern: [3, 3, 3, 3, 3, 4, 0] },
-            { id: 'maximizer', name: '🆘 Emergency Sprint', pattern: [4, 4, 4, 4, 4, 8, 8] }
+            { id: 'crunch', name: '🚀 Project Crunch Week', pattern: [4, 5, 6, 5, 4, 0, 0], description: 'High intensity on weekdays to meet project deadlines. Weekends are free.' },
+            { id: 'warrior', name: '⚡ Weekend Warrior', pattern: [0, 0, 0, 0, 0, 8, 8], description: 'Focuses all overtime on Saturday and Sunday for maximum impact with free weekdays.' },
+            { id: 'steady', name: '🌱 Steady Grind', pattern: [3, 3, 3, 3, 3, 4, 0], description: 'A balanced approach with moderate, consistent overtime on weekdays and a short Saturday.' },
+            { id: 'maximizer', name: '🆘 Emergency Sprint', pattern: [4, 4, 4, 4, 4, 8, 8], description: 'Maximum effort. High hours every day of the week to maximize earnings quickly.' }
         ],
         custom: [] // Loaded from localStorage
     };
@@ -1319,12 +1759,15 @@
 
     const defaultParams = {
       basic: 3700.00,
-      claims: 2260.00,
+      claims: 0.00,
       hpAllow: 80.00,
       incentive: 500.00,
       advance: 500.00,
       hourly: 3700.00 / 208,
       incomeGoal: 9500.00,
+      // NEW: Smart Goal fields
+      desiredSavings: 1500.00,
+      smartGoalEnabled: false,
       // Actual RM values
       epf: 407.00,
       socso: 29.75,
@@ -1361,7 +1804,7 @@
     ];
 
     function loadState() {
-      const raw = localStorage.getItem('salary-ot-state-v3');
+      const raw = localStorage.getItem('salary-ot-state-v5'); // Incremented version for new data structure
       let parsedState;
       if (raw) {
         try { 
@@ -1372,28 +1815,39 @@
       }
 
       if (!parsedState) {
-        const state = { params: {}, ot: {}, customPatterns: [] };
+        const state = { params: {}, ot: {}, expenses: {}, customPatterns: [], budgets: {} };
         months.forEach(m => {
           state.params[m.key] = { ...defaultParams };
           state.ot[m.key] = [];
+          state.expenses[m.key] = [];
+          state.budgets[m.key] = {};
         });
         return state;
       }
       
       months.forEach(m => {
-        if (!parsedState.params[m.key]) {
-          parsedState.params[m.key] = { ...defaultParams };
-        } else {
-            parsedState.params[m.key] = { ...defaultParams, ...parsedState.params[m.key] };
+        if (!parsedState.params[m.key]) parsedState.params[m.key] = { ...defaultParams };
+        else parsedState.params[m.key] = { ...defaultParams, ...parsedState.params[m.key] };
+        
+        if (!parsedState.ot[m.key]) parsedState.ot[m.key] = [];
+        if (!parsedState.expenses) parsedState.expenses = {};
+        if (!parsedState.expenses[m.key]) parsedState.expenses[m.key] = [];
+        else {
+             // Data migration from wifeShare to partnerShare for backward compatibility
+             parsedState.expenses[m.key].forEach(exp => {
+                if (typeof exp.wifeShare !== 'undefined') {
+                    exp.partnerShare = exp.wifeShare;
+                    delete exp.wifeShare;
+                }
+             });
         }
-        if (!parsedState.ot[m.key]) {
-          parsedState.ot[m.key] = [];
-        }
+        
+        // NEW: Budget handling
+        if (!parsedState.budgets) parsedState.budgets = {};
+        if (!parsedState.budgets[m.key]) parsedState.budgets[m.key] = {};
       });
 
-      if (!parsedState.customPatterns) {
-        parsedState.customPatterns = [];
-      }
+      if (!parsedState.customPatterns) parsedState.customPatterns = [];
       otPatterns.custom = parsedState.customPatterns;
 
       return parsedState;
@@ -1401,7 +1855,7 @@
     
     function saveState() { 
       state.customPatterns = otPatterns.custom;
-      localStorage.setItem('salary-ot-state-v3', JSON.stringify(state));
+      localStorage.setItem('salary-ot-state-v5', JSON.stringify(state));
     }
 
     let state = loadState();
@@ -1409,6 +1863,7 @@
     // --- UI Elements ---
     const monthSelect = document.getElementById('monthSelect');
     const monthLabel = document.getElementById('monthLabel');
+    const expensesMonthLabel = document.getElementById('expensesMonthLabel');
     const basic = document.getElementById('basic');
     const claims = document.getElementById('claims');
     const hpAllow = document.getElementById('hpAllow');
@@ -1416,6 +1871,8 @@
     const advance = document.getElementById('advance');
     const hourly = document.getElementById('hourly');
     const incomeGoal = document.getElementById('incomeGoal');
+    const desiredSavings = document.getElementById('desiredSavings');
+    const smartGoalToggle = document.getElementById('smartGoalToggle');
     const epf = document.getElementById('epf');
     const socso = document.getElementById('socso');
     const pcb = document.getElementById('pcb');
@@ -1434,6 +1891,8 @@
     const grossOut = document.getElementById('grossOut');
     const deductOut = document.getElementById('deductOut');
     const netOut = document.getElementById('netOut');
+    const expensesOut = document.getElementById('expensesOut');
+    const balanceOut = document.getElementById('balanceOut');
 
     const incomeGoalVisualizer = document.getElementById('incomeGoalVisualizer');
     const progressBarFill = document.getElementById('progressBarFill');
@@ -1453,7 +1912,9 @@
       eis: document.getElementById('bEIS'),
       adv: document.getElementById('bAdv'),
       deduct: document.getElementById('bDeduct'),
-      net: document.getElementById('bNet')
+      net: document.getElementById('bNet'),
+      expenses: document.getElementById('bExpenses'),
+      balance: document.getElementById('bBalance')
     };
 
     // --- Tab Management ---
@@ -1581,8 +2042,12 @@
       advance.value = params.advance;
       hourly.value = params.hourly.toFixed(4); 
       incomeGoal.value = params.incomeGoal;
+      // NEW: Smart Goal
+      desiredSavings.value = params.desiredSavings;
+      smartGoalToggle.checked = params.smartGoalEnabled;
       
       updateDeductionUI(params.deductionMode);
+      updateSmartGoalUI();
     }
     
     function saveParams(key) {
@@ -1594,6 +2059,9 @@
       params.advance = Number(advance.value||0);
       params.hourly = Number(hourly.value||0);
       params.incomeGoal = Number(incomeGoal.value||0);
+       // NEW: Smart Goal
+      params.desiredSavings = Number(desiredSavings.value || 0);
+      params.smartGoalEnabled = smartGoalToggle.checked;
 
       if (params.deductionMode === 'actual') {
         params.epf = Number(epf.value||0);
@@ -1731,9 +2199,10 @@
       });
     }
 
-    function totalsFor(key) {
+    function totalsFor(key, previousKey = null) {
       const p = state.params[key] || defaultParams;
       const rows = state.ot[key] || [];
+      const expenses = state.expenses[key] || [];
       
       const otPay = rows.reduce((s, r) => s + (Number(r.hours||0) * Number(r.mult||0) * Number(p.hourly||0)), 0);
       const gross = Number(p.basic) + Number(p.claims) + Number(p.hpAllow) + Number(p.incentive) + otPay;
@@ -1741,6 +2210,7 @@
       let epfAmt, socsoAmt, pcbAmt, eisAmt;
 
       if (p.deductionMode === 'estimate') {
+        const totalDeductionPct = (Number(p.epf_pct) + Number(p.socso_pct) + Number(p.pcb_pct) + Number(p.eis_pct)) / 100;
         epfAmt = gross * (Number(p.epf_pct)/100);
         socsoAmt = gross * (Number(p.socso_pct)/100);
         pcbAmt = gross * (Number(p.pcb_pct)/100);
@@ -1755,29 +2225,49 @@
       const deductions = epfAmt + socsoAmt + pcbAmt + eisAmt + Number(p.advance);
       const net = gross - deductions;
       
-      return { otPay, gross, epfAmt, socsoAmt, pcbAmt, eisAmt, deductions, net };
+      const totalExpenses = expenses.reduce((s, e) => s + (Number(e.amount)||0), 0);
+      const totalPartnerExpenses = expenses.reduce((s, e) => s + (Number(e.partnerShare)||0), 0);
+      
+      const balance = net - totalExpenses;
+      
+      let previousTotalExpenses = 0;
+      if (previousKey && state.expenses[previousKey]) {
+          previousTotalExpenses = state.expenses[previousKey].reduce((s, e) => s + (Number(e.amount)||0), 0);
+      }
+
+      return { otPay, gross, epfAmt, socsoAmt, pcbAmt, eisAmt, deductions, net, totalExpenses, totalPartnerExpenses, balance, previousTotalExpenses };
     }
 
     function refresh() {
       const key = monthSelect.value;
-      const cur = months.find(m => m.key === key);
+      const curIdx = months.findIndex(m => m.key === key);
+      const prevKey = curIdx > 0 ? months[curIdx-1].key : null;
+      const cur = months[curIdx];
       
       const dateRange = getOtDateRange(key);
       monthLabel.innerHTML = cur ? `${cur.label} <span class="muted small" style="font-weight: 400;">(${dateRange})</span>` : 'Unknown Month';
+      expensesMonthLabel.textContent = cur ? cur.label : 'Unknown Month';
       
       updateSmartCalculatorDates(key);
       
       loadParams(key);
       renderOT(key);
+      renderExpenses(key);
+      renderExpenseAnalysis(key);
 
-      const { otPay, gross, epfAmt, socsoAmt, pcbAmt, eisAmt, deductions, net } = totalsFor(key);
+      const { otPay, gross, epfAmt, socsoAmt, pcbAmt, eisAmt, deductions, net, totalExpenses, totalPartnerExpenses, balance, previousTotalExpenses } = totalsFor(key, prevKey);
       
+      // Update Quick Stats
       document.getElementById('otTotal').textContent = fmtDisplay(otPay);
       grossOut.innerHTML = `<span class="currency">RM</span> ${fmt(gross)}`;
       deductOut.innerHTML = `<span class="currency">RM</span> ${fmt(deductions)}`;
       netOut.innerHTML = `<span class="currency">RM</span> ${fmt(net)}`;
+      expensesOut.innerHTML = `<span class="currency">RM</span> ${fmt(totalExpenses)}`;
+      balanceOut.innerHTML = `<span class="currency">RM</span> ${fmt(balance)}`;
+
 
       const p = state.params[key] || defaultParams;
+      // Update Breakdown Table
       b.basic.textContent = fmtDisplay(p.basic);
       b.claims.textContent = fmtDisplay(p.claims);
       b.hp.textContent = fmtDisplay(p.hpAllow);
@@ -1791,24 +2281,32 @@
       b.adv.textContent = fmtDisplay(p.advance);
       b.deduct.textContent = fmtDisplay(deductions);
       b.net.textContent = fmtDisplay(net);
+      b.expenses.textContent = fmtDisplay(totalExpenses);
+      b.balance.textContent = fmtDisplay(balance);
+      
+      // Update Expense Totals in Footer
+      document.getElementById('expensesMyTotal').textContent = fmtDisplay(totalExpenses);
+      document.getElementById('expensesPartnerTotal').textContent = fmtDisplay(totalPartnerExpenses);
+
+      // NEW: Recalculate Smart Goal
+      updateSmartGoal(); 
+      const updatedGoal = Number(state.params[key].incomeGoal) || 0; // Use the potentially updated goal
 
       // Update Income Goal Visualizer
-      const goal = Number(p.incomeGoal) || 0;
-      if (goal > 0) {
+      if (updatedGoal > 0) {
           incomeGoalVisualizer.style.display = 'block';
-          const progress = Math.min((net / goal) * 100, 100);
+          const progress = Math.min((net / updatedGoal) * 100, 100);
           progressBarFill.style.width = `${progress}%`;
-          progressBarText.textContent = `${fmtDisplay(net)} / ${fmtDisplay(goal)} (${progress.toFixed(1)}%)`;
+          progressBarText.textContent = `${fmtDisplay(net)} / ${fmtDisplay(updatedGoal)} (${progress.toFixed(1)}%)`;
 
-          // Update Hours to Goal Helper
-          const remaining = goal - net;
+          const remaining = updatedGoal - net;
           if (remaining > 0) {
               const hourlyRate = Number(p.hourly) || 0;
               if (hourlyRate > 0) {
                   const hours1_5x = remaining / (hourlyRate * 1.5);
                   const hours2_0x = remaining / (hourlyRate * 2.0);
                   const hours0_5x = remaining / (hourlyRate * 0.5);
-                  hoursToGoalHelper.innerHTML = `You're <strong>${fmtDisplay(remaining)}</strong> away! You need ~<strong>${hours1_5x.toFixed(1)}h</strong> at 1.5x, <strong>${hours2_0x.toFixed(1)}h</strong> at 2.0x, or <strong>${hours0_5x.toFixed(1)}h</strong> at 0.5x to reach your goal.`;
+                  hoursToGoalHelper.innerHTML = `You're <strong>${fmtDisplay(remaining)}</strong> away! You need ~<strong>${hours1_5x.toFixed(1)}h</strong> at 1.5x, <strong>${hours2_0x.toFixed(1)}h</strong> at 2.0x, or <strong>${hours0_5x.toFixed(1)}h</strong> at 0.5x to reach your goal. <br> <button class="btn success" style="margin-top: 8px; padding: 6px 12px; font-size: 12px;" onclick="autoScheduleToGoal()">🚀 Auto-Schedule to Goal</button>`;
                   hoursToGoalHelper.style.display = 'block';
               }
           } else {
@@ -1819,7 +2317,8 @@
       } else {
           incomeGoalVisualizer.style.display = 'none';
       }
-
+      
+      updateManualHourAdjusters();
       updateCharts();
       calculateForecast();
     }
@@ -1831,6 +2330,50 @@
         saveState();
         refresh();
     }
+    
+    // --- NEW Smart Goal Functions ---
+    function updateSmartGoalUI() {
+        const key = monthSelect.value;
+        const params = state.params[key];
+        const container = document.getElementById('desiredSavingsContainer');
+        
+        if (params.smartGoalEnabled) {
+            container.style.display = 'block';
+            incomeGoal.readOnly = true;
+            incomeGoal.style.cursor = 'not-allowed';
+            incomeGoal.style.color = 'var(--muted)';
+        } else {
+            container.style.display = 'none';
+            incomeGoal.readOnly = false;
+            incomeGoal.style.cursor = 'text';
+            incomeGoal.style.color = 'var(--text)';
+        }
+    }
+    
+    function updateSmartGoal() {
+        const key = monthSelect.value;
+        const params = state.params[key];
+        
+        if (params.smartGoalEnabled) {
+            const { totalExpenses } = totalsFor(key);
+            const savings = Number(params.desiredSavings) || 0;
+            const newGoal = totalExpenses + savings;
+            
+            incomeGoal.value = newGoal.toFixed(2);
+            // We update the state directly here, which will be saved in the next auto-save
+            if (state.params[key].incomeGoal !== newGoal) {
+                 state.params[key].incomeGoal = newGoal;
+                 // A light save without full refresh to avoid loops
+                 saveState();
+                 // Now update just the visualizer
+                 const { net } = totalsFor(key);
+                 const progress = Math.min((net / newGoal) * 100, 100);
+                 progressBarFill.style.width = `${progress}%`;
+                 progressBarText.textContent = `${fmtDisplay(net)} / ${fmtDisplay(newGoal)} (${progress.toFixed(1)}%)`;
+            }
+        }
+    }
+    // --- End Smart Goal Functions ---
 
     function updateDeductionUI(mode) {
         const key = monthSelect.value;
@@ -1865,14 +2408,19 @@
 
     function updateCharts() {
       const labels = months.map(m => m.label).slice(0, 12); // Limit to 12 months for readability
-      const grossArr = labels.map(label => {
-        const monthKey = months.find(m => m.label === label).key;
-        return totalsFor(monthKey).gross;
+      
+      const datasetsGross = { basic: [], claims: [], hp: [], incentive: [], ot: [] };
+      labels.forEach(label => {
+          const monthKey = months.find(m => m.label === label).key;
+          const p = state.params[monthKey] || defaultParams;
+          const { otPay } = totalsFor(monthKey);
+          datasetsGross.basic.push(p.basic);
+          datasetsGross.claims.push(p.claims);
+          datasetsGross.hp.push(p.hpAllow);
+          datasetsGross.incentive.push(p.incentive);
+          datasetsGross.ot.push(otPay);
       });
-      const netArr = labels.map(label => {
-        const monthKey = months.find(m => m.label === label).key;
-        return totalsFor(monthKey).net;
-      });
+
       const otHoursArr = labels.map(label => {
         const monthKey = months.find(m => m.label === label).key;
         const rows = state.ot[monthKey] || [];
@@ -1881,8 +2429,11 @@
 
       if (chartGrossNet) {
         chartGrossNet.data.labels = labels;
-        chartGrossNet.data.datasets[0].data = grossArr;
-        chartGrossNet.data.datasets[1].data = netArr;
+        chartGrossNet.data.datasets[0].data = datasetsGross.basic;
+        chartGrossNet.data.datasets[1].data = datasetsGross.ot;
+        chartGrossNet.data.datasets[2].data = datasetsGross.claims;
+        chartGrossNet.data.datasets[3].data = datasetsGross.incentive;
+        chartGrossNet.data.datasets[4].data = datasetsGross.hp;
         chartGrossNet.update('none');
       }
 
@@ -1892,6 +2443,250 @@
         chartOT.update('none');
       }
     }
+
+    // --- Expenses Tab Functions ---
+    function renderExpenseAnalysis(key) {
+        const container = document.getElementById('expenseInfographicContainer');
+        const expenses = state.expenses[key] || [];
+        const budgets = state.budgets[key] || {};
+        
+        const analysisData = expenses.reduce((acc, exp) => {
+            const cat = exp.category || 'Uncategorized';
+            if (!acc[cat]) {
+                acc[cat] = { myTotal: 0, partnerTotal: 0 };
+            }
+            acc[cat].myTotal += exp.amount;
+            acc[cat].partnerTotal += exp.partnerShare;
+            return acc;
+        }, {});
+
+        const sortedCategories = Object.keys(analysisData).sort((a,b) => {
+            const totalA = analysisData[a].myTotal + analysisData[a].partnerTotal;
+            const totalB = analysisData[b].myTotal + analysisData[b].partnerTotal;
+            return totalB - totalA;
+        });
+        
+        // Update Pie Chart
+        if (expensePieChart) {
+            expensePieChart.data.labels = sortedCategories;
+            expensePieChart.data.datasets[0].data = sortedCategories.map(cat => analysisData[cat].myTotal);
+            expensePieChart.update('none');
+        }
+
+        if (sortedCategories.length === 0) {
+            container.innerHTML = '<p style="text-align:center; padding: 20px; color: var(--muted);">No expenses logged for this month.</p>';
+            return;
+        }
+
+        let infographicHTML = '';
+        sortedCategories.forEach(cat => {
+            const data = analysisData[cat];
+            const total = data.myTotal + data.partnerTotal;
+            const myPercent = total > 0 ? (data.myTotal / total) * 100 : 0;
+            const partnerPercent = total > 0 ? (data.partnerTotal / total) * 100 : 0;
+            
+            const budget = budgets[cat] || 0;
+            let budgetHTML = '';
+            if (budget > 0) {
+                const budgetSpentPct = Math.min((total / budget) * 100, 100);
+                let barColor = 'var(--success)';
+                if (budgetSpentPct > 75) barColor = 'var(--warning)';
+                if (budgetSpentPct >= 100) barColor = 'var(--danger)';
+
+                budgetHTML = `
+                    <div class="budget-progress-bar-container">
+                        <div class="budget-progress-bar-fill" style="width: ${budgetSpentPct}%; background-color: ${barColor};"></div>
+                    </div>
+                    <div class="category-breakdown" style="font-size: 11px;">
+                        <span>Spent: <strong style="color:var(--text)">${fmtDisplay(total)}</strong></span>
+                        <span>Budget: <strong style="color:var(--muted)">${fmtDisplay(budget)}</strong></span>
+                    </div>
+                `;
+            }
+
+
+            infographicHTML += `
+                <div class="category-item">
+                    <div class="category-header">
+                        <span>${cat}</span>
+                        <span class="category-total">${fmtDisplay(total)}</span>
+                    </div>
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-user" style="width: ${myPercent}%" title="My Cost: ${fmtDisplay(data.myTotal)}"></div>
+                        <div class="progress-bar-partner" style="width: ${partnerPercent}%" title="Partner's Cost: ${fmtDisplay(data.partnerTotal)}"></div>
+                    </div>
+                    <div class="category-breakdown">
+                        <span>My Cost: <strong style="color:var(--warning)">${fmtDisplay(data.myTotal)}</strong></span>
+                        <span>Partner's Cost: <strong style="color:var(--accent)">${fmtDisplay(data.partnerTotal)}</strong></span>
+                    </div>
+                    ${budgetHTML}
+                </div>
+            `;
+        });
+
+        container.innerHTML = infographicHTML;
+    }
+
+    function renderExpenses(key) {
+        const expensesTableBody = document.querySelector('#expensesTable tbody');
+        const searchTerm = document.getElementById('expenseSearch').value.toLowerCase();
+        expensesTableBody.innerHTML = '';
+        
+        let expenses = state.expenses[key] || [];
+
+        // 1. Filter
+        if (searchTerm) {
+            expenses = expenses.filter(exp => 
+                exp.desc.toLowerCase().includes(searchTerm) ||
+                exp.category.toLowerCase().includes(searchTerm) ||
+                (exp.notes && exp.notes.toLowerCase().includes(searchTerm))
+            );
+        }
+
+        // 2. Sort
+        expenses.sort((a, b) => {
+            let valA = a[expenseSort.key];
+            let valB = b[expenseSort.key];
+            
+            if (expenseSort.key === 'paidBy') {
+                valA = a.isPaidByWife ? 1 : 0;
+                valB = b.isPaidByWife ? 1 : 0;
+            } else if (expenseSort.key === 'amount' || expenseSort.key === 'fullAmount' || expenseSort.key === 'partnerShare') {
+                valA = Number(valA);
+                valB = Number(valB);
+            }
+            if (expenseSort.key === 'date') {
+                return expenseSort.order === 'asc' ? new Date(valA) - new Date(valB) : new Date(valB) - new Date(valA);
+            }
+
+            if (valA < valB) return expenseSort.order === 'asc' ? -1 : 1;
+            if (valA > valB) return expenseSort.order === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // 3. Render
+        expenses.forEach(expense => {
+            const tr = document.createElement('tr');
+            const hasPartnerShare = expense.partnerShare > 0;
+            const recurringIcon = expense.isRecurring ? '🔄' : '';
+            tr.innerHTML = `
+                <td>${expense.date}</td>
+                <td>${expense.desc} <span title="Recurring Expense">${recurringIcon}</span></td>
+                <td>${expense.category}</td>
+                <td style="color: ${hasPartnerShare ? 'var(--accent)' : 'var(--text)'}; font-weight: ${hasPartnerShare ? '600' : '400'};">${fmtDisplay(expense.fullAmount)}</td>
+                <td style="color: var(--warning); font-weight: 600;">${fmtDisplay(expense.amount)}</td>
+                <td style="color: var(--muted);">${fmtDisplay(expense.partnerShare)}</td>
+                <td><div class="expense-note" title="${expense.notes || ''}">${expense.notes || '-'}</div></td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn ghost" onclick="editExpense('${expense.id}')" title="Edit">✏️</button>
+                        <button class="btn ghost" onclick="deleteExpense('${expense.id}')" title="Delete">🗑️</button>
+                    </div>
+                </td>
+            `;
+            expensesTableBody.appendChild(tr);
+        });
+    }
+    
+    function setExpenseSort(key) {
+        if (expenseSort.key === key) {
+            expenseSort.order = expenseSort.order === 'asc' ? 'desc' : 'asc';
+        } else {
+            expenseSort.key = key;
+            expenseSort.order = (key === 'amount' || key === 'date' || key === 'fullAmount' || key === 'partnerShare') ? 'desc' : 'asc';
+        }
+        
+        // Update header classes
+        document.querySelectorAll('#expensesTable th').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if(th.dataset.sort === key) {
+                th.classList.add(`sort-${expenseSort.order}`);
+            }
+        });
+
+        renderExpenses(monthSelect.value);
+    }
+
+
+    function handleExpenseSubmit(e) {
+        e.preventDefault();
+        const key = monthSelect.value;
+        const isRecurring = document.getElementById('isRecurringToggle').checked;
+        const myShare = parseFloat(document.getElementById('expenseMyShare').value) || 0;
+        const partnerShare = parseFloat(document.getElementById('expensePartnerShare').value) || 0;
+        
+        const newExpense = {
+            id: editingExpenseId || `exp_${new Date().getTime()}`,
+            date: document.getElementById('expenseDate').value,
+            desc: document.getElementById('expenseDesc').value.trim(),
+            category: document.getElementById('expenseCat').value.trim(),
+            fullAmount: myShare + partnerShare,
+            amount: myShare, // 'amount' is always My Share for calculations
+            partnerShare: partnerShare,
+            notes: document.getElementById('expenseNotes').value.trim(),
+            isRecurring: isRecurring
+        };
+
+        if (newExpense.desc && newExpense.category && (myShare > 0 || partnerShare > 0) && newExpense.date) {
+            if (editingExpenseId) { // Update existing
+                const index = state.expenses[key].findIndex(exp => exp.id === editingExpenseId);
+                state.expenses[key][index] = newExpense;
+            } else { // Add new
+                 if (!state.expenses[key]) state.expenses[key] = [];
+                state.expenses[key].push(newExpense);
+            }
+            saveState();
+            refresh();
+            cancelEdit();
+        } else {
+            alert("Please fill in Date, Description, Category, and at least one Share amount.");
+        }
+    }
+
+    function editExpense(expenseId) {
+        const key = monthSelect.value;
+        const expense = state.expenses[key].find(exp => exp.id === expenseId);
+        if (expense) {
+            editingExpenseId = expenseId;
+            document.getElementById('expenseDate')._flatpickr.setDate(expense.date, true);
+            document.getElementById('expenseDesc').value = expense.desc;
+            document.getElementById('expenseCat').value = expense.category;
+            document.getElementById('expenseMyShare').value = expense.amount;
+            document.getElementById('expensePartnerShare').value = expense.partnerShare;
+            document.getElementById('expenseNotes').value = expense.notes || '';
+            
+            // Handle recurring toggle
+            document.getElementById('isRecurringToggle').checked = expense.isRecurring || false;
+            
+            const addBtn = document.getElementById('addExpenseBtn');
+            addBtn.textContent = '💾 Save';
+            addBtn.classList.remove('primary');
+            addBtn.classList.add('success');
+            document.getElementById('cancelEditBtn').style.display = 'inline-flex';
+        }
+    }
+
+    function cancelEdit() {
+        editingExpenseId = null;
+        document.getElementById('addExpenseForm').reset();
+        document.getElementById('expenseDate')._flatpickr.setDate(new Date(), true);
+        const addBtn = document.getElementById('addExpenseBtn');
+        addBtn.textContent = '➕ Add';
+        addBtn.classList.remove('success');
+        addBtn.classList.add('primary');
+        document.getElementById('cancelEditBtn').style.display = 'none';
+    }
+
+    function deleteExpense(expenseId) {
+        if (confirm('Are you sure you want to delete this expense?')) {
+            const key = monthSelect.value;
+            state.expenses[key] = state.expenses[key].filter(exp => exp.id !== expenseId);
+            saveState();
+            refresh();
+        }
+    }
+
+
 
     // --- Smart Calculator & OT Pattern Functions ---
     function populateHolidayChecklist() { 
@@ -2053,15 +2848,33 @@
                     hours: hours, 
                     pay: hours * rate, 
                     type: overtimeType, 
-                    rate: rate, 
-                    startTime: generateRandomStartTime(dayOfWeek),
-                    endTime: calculateEndTime(generateRandomStartTime(dayOfWeek), hours)
+                    rate: rate
                 });
             }
         });
+        
+        // NEW: Scale pattern to meet target if provided
+        const targetPay = parseFloat(document.getElementById('targetPay').value);
+        if (targetPay > 0) {
+            const initialTotalPay = dailyHours.reduce((sum, day) => sum + day.pay, 0);
+            if (initialTotalPay > 0) {
+                const scaleFactor = targetPay / initialTotalPay;
+                dailyHours.forEach(day => {
+                    day.hours = Math.round((day.hours * scaleFactor) * 4) / 4; // Round to nearest 0.25
+                    day.pay = day.hours * day.rate;
+                });
+            }
+        }
+        
+        // Add start/end times after all calculations
+        dailyHours.forEach(day => {
+            const dayOfWeek = new Date(day.date + 'T00:00:00').getDay();
+            day.startTime = generateRandomStartTime(dayOfWeek);
+            day.endTime = calculateEndTime(day.startTime, day.hours);
+        });
 
         calculatedDailyHours = dailyHours;
-        displaySmartResults(calculatedDailyHours);
+        displaySmartResults(calculatedDailyHours, targetPay);
     }
 
     function calculateSmartOT() {
@@ -2174,7 +2987,7 @@
       document.getElementById('smartSummary').innerHTML = summaryHTML;
       
       // --- Update and display hour adjusters ---
-      const adjusterContainer = document.getElementById('hourAdjusterContainer');
+      const adjusterContainer = document.getElementById('smartHourAdjusterContainer');
       if (dailyHours.length > 0) {
         let totals = { weekday: 0, saturday: 0, sunday: 0, holiday: 0 };
         dailyHours.forEach(day => {
@@ -2192,6 +3005,7 @@
         document.getElementById('saturdayHoursTotal').value = totals.saturday.toFixed(2) + 'h';
         document.getElementById('sundayHoursTotal').value = totals.sunday.toFixed(2) + 'h';
         document.getElementById('holidayHoursTotal').value = totals.holiday.toFixed(2) + 'h';
+        document.getElementById('smartTotalOtPayAdjuster').textContent = fmtDisplay(totalPay);
 
         adjusterContainer.style.display = 'block';
       } else {
@@ -2294,51 +3108,57 @@
     }
 
     function applyToManualTab() {
-      if (calculatedDailyHours.length === 0) { 
-        alert("No smart calculation data to apply. Please calculate first."); 
-        return; 
+      if (calculatedDailyHours.length === 0) {
+        alert("No smart calculation data to apply. Please calculate first.");
+        return;
       }
 
       const currentMonth = monthSelect.value;
       const workingDays = calculatedDailyHours.filter(day => day.hours > 0);
-      
+
       if (workingDays.length === 0) {
         alert("No overtime days found in the calculation.");
         return;
       }
 
-      if (!confirm(`This will clear all existing OT entries for ${months.find(m => m.key === currentMonth)?.label || currentMonth} and apply the new schedule. Continue?`)) {
+      if (!confirm(`This will merge the generated hours with your existing entries for ${months.find(m => m.key === currentMonth)?.label || currentMonth}. Continue?`)) {
           return;
       }
 
-      // Clear existing OT entries for current month
-      state.ot[currentMonth] = [];
-
-      // Convert smart calculation to manual entries
+      // ADD to existing entries instead of replacing
       workingDays.forEach(day => {
-        let multiplier = 1.5; // Default
-        
-        if (day.type.includes('Rest Day')) multiplier = 0.5;
-        else if (day.type.includes('Public Holiday')) multiplier = 2.0;
-        else if (day.type.includes('1.5x')) multiplier = 1.5;
-        
-        state.ot[currentMonth].push({
-          date: day.date,
-          start: day.startTime,
-          end: day.endTime,
-          hours: day.hours,
-          mult: multiplier,
-          notes: 'Generated by Smart OT'
-        });
+        const existingEntry = state.ot[currentMonth].find(entry => entry.date === day.date);
+
+        if (existingEntry) {
+          existingEntry.hours = (Number(existingEntry.hours) || 0) + day.hours;
+          if (existingEntry.start) {
+            existingEntry.end = calculateEndTime(existingEntry.start, existingEntry.hours);
+          }
+        } else {
+          let multiplier = 1.5;
+          if (day.type.includes('Rest Day')) multiplier = 0.5;
+          else if (day.type.includes('Public Holiday')) multiplier = 2.0;
+          else if (day.type.includes('1.5x')) multiplier = 1.5;
+
+          state.ot[currentMonth].push({
+            date: day.date,
+            start: day.startTime,
+            end: day.endTime,
+            hours: day.hours,
+            mult: multiplier,
+            notes: 'Generated by Smart OT'
+          });
+        }
       });
+      
+      // Sort all entries by date after adding new ones
+      state.ot[currentMonth].sort((a, b) => new Date(a.date) - new Date(b.date));
+
 
       saveState();
-      
-      // Switch to manual tab and refresh
       switchTab('manual', document.querySelector('.tab[onclick*="manual"]'));
       refresh();
-      
-      alert(`✅ Applied ${workingDays.length} overtime entries to ${months.find(m => m.key === currentMonth)?.label || currentMonth}!`);
+      alert(`✅ Schedule updated and merged successfully!`);
     }
 
     // --- OT Pattern Management ---
@@ -2352,6 +3172,7 @@
             const opt = document.createElement('option');
             opt.value = p.id;
             opt.textContent = p.name;
+            opt.title = p.description;
             predefinedGroup.appendChild(opt);
         });
         select.appendChild(predefinedGroup);
@@ -2390,24 +3211,61 @@
             alert("Pattern cannot be all zeros. Please enter some hours.");
             return;
         }
-
-        const newPattern = {
-            id: `custom_${Date.now()}`,
-            name: `📝 ${name}`,
-            pattern: pattern
-        };
-
-        otPatterns.custom.push(newPattern);
+        
+        // NEW: Check if we are editing or saving new
+        if (editingPatternId) {
+            const patternToUpdate = otPatterns.custom.find(p => p.id === editingPatternId);
+            if (patternToUpdate) {
+                patternToUpdate.name = `📝 ${name}`;
+                patternToUpdate.pattern = pattern;
+                alert(`✅ Pattern "${name}" updated!`);
+            }
+        } else {
+            const newPattern = {
+                id: `custom_${Date.now()}`,
+                name: `📝 ${name}`,
+                pattern: pattern
+            };
+            otPatterns.custom.push(newPattern);
+            alert(`✅ Pattern "${name}" saved!`);
+        }
+        
         saveState();
         populatePatternSelector();
-        alert(`✅ Pattern "${name}" saved!`);
+        cancelEditPattern(); // Reset form
+    }
+    
+    // NEW: Function to load a pattern for editing
+    function editPattern() {
+        const select = document.getElementById('patternSelect');
+        const selectedId = select.value;
+        const pattern = otPatterns.custom.find(p => p.id === selectedId);
 
-        // Clear inputs
+        if (pattern) {
+            editingPatternId = selectedId;
+            document.getElementById('customPatternName').value = pattern.name.replace('📝 ', '');
+            document.getElementById('customPatternMon').value = pattern.pattern[0];
+            document.getElementById('customPatternTue').value = pattern.pattern[1];
+            document.getElementById('customPatternWed').value = pattern.pattern[2];
+            document.getElementById('customPatternThu').value = pattern.pattern[3];
+            document.getElementById('customPatternFri').value = pattern.pattern[4];
+            document.getElementById('customPatternSat').value = pattern.pattern[5];
+            document.getElementById('customPatternSun').value = pattern.pattern[6];
+            
+            document.getElementById('savePatternBtn').textContent = '💾 Update Pattern';
+        }
+    }
+    
+    // NEW: Function to reset the pattern editing form
+    function cancelEditPattern() {
+        editingPatternId = null;
         document.getElementById('customPatternName').value = '';
         ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
             document.getElementById(`customPattern${day}`).value = '';
         });
+        document.getElementById('savePatternBtn').textContent = '💾 Save New Pattern';
     }
+
 
     function deleteCustomPattern() {
         const select = document.getElementById('patternSelect');
@@ -2431,7 +3289,7 @@
     function aiSuggestSchedule() {
         const inputs = getSmartCalulatorInputs();
         if (!inputs) return;
-        const { daysInRange, rates, allHolidays } = inputs;
+        let { daysInRange, rates, allHolidays } = inputs;
         lastGeneratedRates = rates;
         lastGeneratedAllHolidays = allHolidays;
 
@@ -2440,6 +3298,12 @@
             alert('Please enter a valid Target OT Pay to generate an AI schedule!');
             return;
         }
+        
+        // NEW: Apply AI Constraints
+        const blackoutDates = document.getElementById('blackoutDates')._flatpickr.selectedDates.map(d => formatDateToYyyyMmDd(d));
+        const workStyle = document.getElementById('workStylePreference').value;
+        daysInRange = daysInRange.filter(d => !blackoutDates.includes(formatDateToYyyyMmDd(d)));
+
 
         // 1. Analyze historical data
         const history = { weekday: [], saturday: [], sunday: [] };
@@ -2452,11 +3316,23 @@
         });
 
         const getAvg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-        const avgHours = {
+        let avgHours = {
             weekday: getAvg(history.weekday) || 4, // Default to 4 if no history
-            saturday: getAvg(history.saturday) || 6, // Default to 6
-            sunday: getAvg(history.sunday) || 6, // Default to 6
+            saturday: getAvg(history.saturday) || 8, // Default to 8
+            sunday: getAvg(history.sunday) || 8, // Default to 8
         };
+        
+        // NEW: Adjust avgHours based on work style preference
+        if (workStyle === 'long_days') {
+            avgHours.weekday *= 1.25;
+            avgHours.saturday *= 1.25;
+            avgHours.sunday *= 1.25;
+        } else if (workStyle === 'short_sessions') {
+            avgHours.weekday *= 0.75;
+            avgHours.saturday *= 0.75;
+            avgHours.sunday *= 0.75;
+        }
+
 
         // 2. Map and prioritize all available days in the range
         let potentialSlots = daysInRange.map(date => {
@@ -2619,6 +3495,104 @@
         document.getElementById('whatIfNet').textContent = fmtDisplay(whatIfNet);
     }
 
+    function autoScheduleToGoal() {
+        const key = monthSelect.value;
+        const { net } = totalsFor(key);
+        const p = state.params[key];
+        const goal = Number(p.incomeGoal) || 0;
+        const remainingNet = goal - net;
+
+        if (remainingNet <= 0) {
+            alert("You've already reached your net income goal!");
+            return;
+        }
+
+        const totalDeductionPct = (Number(p.epf_pct) + Number(p.socso_pct) + Number(p.pcb_pct) + Number(p.eis_pct)) / 100;
+        const requiredAdditionalGrossOt = remainingNet / (1 - totalDeductionPct);
+        
+        switchTab('smart', document.querySelector('.tab[onclick*="smart"]'));
+        
+        document.getElementById('targetPay').value = requiredAdditionalGrossOt.toFixed(2);
+        aiSuggestSchedule();
+    }
+    
+    function updateManualHourAdjusters() {
+        const key = monthSelect.value;
+        const rows = state.ot[key] || [];
+        const adjusterContainer = document.getElementById('manualHourAdjusterContainer');
+        const { otPay } = totalsFor(key);
+
+        if (rows.length > 0) {
+            let totals = { weekday: 0, saturday: 0, sunday: 0, holiday: 0 };
+            const allHolidays = getAllHolidays();
+
+            rows.forEach(row => {
+                const d = new Date(row.date + 'T00:00:00');
+                const dayOfWeek = d.getDay();
+                const isHoliday = allHolidays.includes(row.date);
+                const hours = Number(row.hours) || 0;
+
+                if (isHoliday) totals.holiday += hours;
+                else if (dayOfWeek === 0) totals.sunday += hours;
+                else if (dayOfWeek === 6) totals.saturday += hours;
+                else totals.weekday += hours;
+            });
+
+            document.getElementById('manualWeekdayHoursTotal').value = totals.weekday.toFixed(2) + 'h';
+            document.getElementById('manualSaturdayHoursTotal').value = totals.saturday.toFixed(2) + 'h';
+            document.getElementById('manualSundayHoursTotal').value = totals.sunday.toFixed(2) + 'h';
+            document.getElementById('manualHolidayHoursTotal').value = totals.holiday.toFixed(2) + 'h';
+            document.getElementById('manualTotalOtPayAdjuster').textContent = fmtDisplay(otPay);
+
+            adjusterContainer.style.display = 'block';
+        } else {
+            adjusterContainer.style.display = 'none';
+        }
+    }
+
+    function adjustManualHours(rateType, amount) {
+        const key = monthSelect.value;
+        const allHolidays = getAllHolidays();
+        let relevantDays = state.ot[key].filter(day => {
+            const d = new Date(day.date + 'T00:00:00');
+            const dayOfWeek = d.getDay();
+            const isHoliday = allHolidays.includes(day.date);
+
+            if (isHoliday) return rateType === 'holiday';
+            if (rateType === 'sunday') return dayOfWeek === 0;
+            if (rateType === 'saturday') return dayOfWeek === 6;
+            if (rateType === 'weekday') return dayOfWeek > 0 && dayOfWeek < 6;
+            return false;
+        });
+
+        if (amount > 0) {
+            if (relevantDays.length > 0) {
+                let dayToModify = relevantDays.reduce((prev, curr) => (prev.hours || 0) < (curr.hours || 0) ? prev : curr);
+                dayToModify.hours = (Number(dayToModify.hours) || 0) + amount;
+                if (dayToModify.start) {
+                    dayToModify.end = calculateEndTime(dayToModify.start, dayToModify.hours);
+                }
+            } else {
+                alert(`No ${rateType} days in your schedule to add hours to. Please add a relevant day first.`);
+                return;
+            }
+        } else {
+            let daysWithHours = relevantDays.filter(d => (d.hours || 0) > 0);
+            if (daysWithHours.length > 0) {
+                let dayToModify = daysWithHours.reduce((prev, curr) => (prev.hours || 0) > (curr.hours || 0) ? prev : curr);
+                dayToModify.hours = Math.max(0, (Number(dayToModify.hours) || 0) + amount);
+                 if (dayToModify.start) {
+                    dayToModify.end = calculateEndTime(dayToModify.start, dayToModify.hours);
+                }
+            } else {
+                return; 
+            }
+        }
+        
+        saveState();
+        refresh();
+    }
+
 
     // --- Event Handlers ---
     function initCharts() {
@@ -2628,12 +3602,20 @@
       const borderColor = computedStyle.getPropertyValue('--border').trim();
       const cardColor = computedStyle.getPropertyValue('--card').trim();
       const radiusSm = computedStyle.getPropertyValue('--radius-sm').trim();
+      
+      const tooltipOptions = {
+            backgroundColor: 'rgba(22, 22, 37, 0.95)',
+            titleColor: textColor,
+            bodyColor: mutedColor,
+            borderColor: borderColor,
+            borderWidth: 1,
+            cornerRadius: parseInt(radiusSm),
+            padding: 12,
+            titleFont: { family: "'Poppins', sans-serif" },
+            bodyFont: { family: "'Poppins', sans-serif" }
+        };
 
-      const commonOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
+      const legendOptions = {
             position: 'top',
             labels: {
               usePointStyle: true,
@@ -2644,78 +3626,33 @@
                   size: 12
               }
             }
-          },
-          tooltip: {
-            backgroundColor: 'rgba(22, 22, 37, 0.95)',
-            titleColor: textColor,
-            bodyColor: mutedColor,
-            borderColor: borderColor,
-            borderWidth: 1,
-            cornerRadius: parseInt(radiusSm),
-            padding: 12,
-            titleFont: { family: "'Poppins', sans-serif" },
-            bodyFont: { family: "'Poppins', sans-serif" },
-            callbacks: {
-              label: function(context) {
-                if (context.datasetIndex !== undefined && context.dataset.label) {
-                  return context.dataset.label + ': RM ' + context.parsed.y.toFixed(2);
-                }
-                return context.label + ': ' + context.parsed.y.toFixed(1) + 'h';
-              }
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            grid: {
-              color: 'rgba(58, 58, 90, 0.5)',
-              drawBorder: false
-            },
-            ticks: {
-              color: mutedColor,
-              font: { family: "'Poppins', sans-serif" }
-            }
-          },
-          x: {
-            grid: {
-              color: 'rgba(58, 58, 90, 0.3)',
-              display: false
-            },
-            ticks: {
-              color: mutedColor,
-              font: { family: "'Poppins', sans-serif" }
-            }
-          }
-        }
-      };
+        };
 
+      // NEW: Income Composition Chart (Replaces old Gross/Net chart)
       chartGrossNet = new Chart(document.getElementById('chartGrossNet'), {
         type: 'bar',
         data: {
           labels: [],
           datasets: [
-            {
-              label: 'Gross Income',
-              data: [],
-              backgroundColor: 'rgba(255, 121, 198, 0.7)',
-              borderColor: 'rgba(255, 121, 198, 1)',
-              borderWidth: 1,
-              borderRadius: 6
-            },
-            {
-              label: 'Net Pay',
-              data: [],
-              backgroundColor: 'rgba(80, 250, 123, 0.7)',
-              borderColor: 'rgba(80, 250, 123, 1)',
-              borderWidth: 1,
-              borderRadius: 6
-            }
+            { label: 'Basic', data: [], backgroundColor: 'rgba(80, 250, 123, 0.7)'},
+            { label: 'OT', data: [], backgroundColor: 'rgba(255, 121, 198, 0.7)'},
+            { label: 'Claims', data: [], backgroundColor: 'rgba(241, 250, 140, 0.7)'},
+            { label: 'Incentive', data: [], backgroundColor: 'rgba(139, 233, 253, 0.7)' },
+            { label: 'HP Allow', data: [], backgroundColor: 'rgba(189, 147, 249, 0.7)' }
           ]
         },
-        options: commonOptions
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: legendOptions, tooltip: tooltipOptions },
+            scales: {
+              y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(58, 58, 90, 0.5)', drawBorder: false }, ticks: { color: mutedColor } },
+              x: { stacked: true, grid: { display: false }, ticks: { color: mutedColor } }
+            }
+        }
       });
-
+      
+      // OT Hours Chart (no change)
       chartOT = new Chart(document.getElementById('chartOT'), {
         type: 'line',
         data: {
@@ -2737,7 +3674,41 @@
             }
           ]
         },
-        options: commonOptions
+        options: {
+             responsive: true,
+             maintainAspectRatio: false,
+             plugins: { legend: legendOptions, tooltip: {...tooltipOptions, callbacks: {
+                label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(1)}h`
+             }}},
+             scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(58, 58, 90, 0.5)', drawBorder: false }, ticks: { color: mutedColor } },
+                x: { grid: { display: false }, ticks: { color: mutedColor } }
+            }
+        }
+      });
+      
+      // NEW: Expense Pie Chart
+      expensePieChart = new Chart(document.getElementById('expensePieChart'), {
+          type: 'pie',
+          data: {
+              labels: [],
+              datasets: [{
+                  data: [],
+                  backgroundColor: ['#ff79c6', '#50fa7b', '#f1fa8c', '#bd93f9', '#8be9fd', '#ffb86c', '#ff5555'],
+                  borderColor: 'var(--card)',
+                  borderWidth: 2,
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                  legend: { display: false },
+                  tooltip: {...tooltipOptions, callbacks: {
+                      label: (context) => `${context.label}: ${fmtDisplay(context.parsed)}`
+                  }}
+              }
+          }
       });
     }
 
@@ -2769,7 +3740,8 @@
                         if (importedState && importedState.params && importedState.ot) {
                             if (confirm("This will overwrite all current data. Are you sure you want to proceed?")) {
                                 state = importedState;
-                                saveState();
+                                saveState(); // This calls loadState again which will perform the migration
+                                state = loadState(); 
                                 refresh();
                                 populatePatternSelector(); // Repopulate after import
                                 showSaveMessage('✅ Data imported successfully!');
@@ -2786,6 +3758,160 @@
             }
         }
         input.click();
+    }
+    
+    // --- NEW: Modal Handling ---
+    function setupModals() {
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', e => {
+                if (e.target === modal || e.target.classList.contains('modal-close-btn')) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+    }
+    
+    // --- NEW: Budgeting Functions ---
+    function openBudgetModal() {
+        const key = monthSelect.value;
+        const form = document.getElementById('budgetForm');
+        form.innerHTML = ''; // Clear previous form
+        
+        const currentBudgets = state.budgets[key] || {};
+        
+        expenseCategories.forEach(cat => {
+            const value = currentBudgets[cat] || '';
+            const item = document.createElement('div');
+            item.className = 'budget-item';
+            item.innerHTML = `
+                <label for="budget-${cat}">${cat}</label>
+                <input type="number" id="budget-${cat}" step="0.01" placeholder="0.00" value="${value}" data-category="${cat}">
+            `;
+            form.appendChild(item);
+        });
+        
+        document.getElementById('budgetModal').classList.add('active');
+    }
+    
+    function saveBudgets() {
+        const key = monthSelect.value;
+        state.budgets[key] = {};
+        document.querySelectorAll('#budgetForm input').forEach(input => {
+            const category = input.dataset.category;
+            const value = parseFloat(input.value);
+            if (value > 0) {
+                state.budgets[key][category] = value;
+            }
+        });
+        saveState();
+        document.getElementById('budgetModal').classList.remove('active');
+        refresh();
+        showSaveMessage('💰 Budgets saved successfully!');
+    }
+    
+    // --- NEW: Recurring Expenses ---
+    function copyRecurringExpenses() {
+        const currentKey = monthSelect.value;
+        const currentIndex = months.findIndex(m => m.key === currentKey);
+        if (currentIndex === 0) {
+            alert("Cannot copy, as this is the first month in the list.");
+            return;
+        }
+        const lastMonthKey = months[currentIndex - 1].key;
+        const recurringExpenses = (state.expenses[lastMonthKey] || []).filter(exp => exp.isRecurring);
+        
+        if (recurringExpenses.length === 0) {
+            alert('No recurring expenses found in the previous month.');
+            return;
+        }
+        
+        let addedCount = 0;
+        recurringExpenses.forEach(exp => {
+            // Check if a similar recurring expense already exists to avoid duplicates
+            const alreadyExists = (state.expenses[currentKey] || []).some(
+                currentExp => currentExp.isRecurring && currentExp.desc === exp.desc
+            );
+            
+            if (!alreadyExists) {
+                const newDate = new Date(currentKey + '-01'); // Start of current month
+                newDate.setDate(new Date(exp.date).getDate()); // Try to keep the same day
+                if (newDate.getMonth() !== new Date(currentKey + '-01').getMonth()) {
+                    newDate.setDate(0); // Last day of previous month if day doesn't exist
+                }
+
+                const newExpense = {
+                    ...exp,
+                    id: `exp_${Date.now()}_${Math.random()}`,
+                    date: formatDateToYyyyMmDd(newDate)
+                };
+                state.expenses[currentKey].push(newExpense);
+                addedCount++;
+            }
+        });
+
+        if (addedCount > 0) {
+            saveState();
+            refresh();
+            showSaveMessage(`✅ Copied ${addedCount} recurring expense(s) from last month.`);
+        } else {
+            alert('All recurring expenses from last month already exist in the current month.');
+        }
+    }
+    
+    // --- NEW: Annual Summary ---
+    function openAnnualSummaryModal() {
+        const yearSelect = document.getElementById('annualSummaryYearSelect');
+        const uniqueYears = [...new Set(months.map(m => m.key.substring(0, 4)))];
+        yearSelect.innerHTML = uniqueYears.map(y => `<option value="${y}">${y}</option>`).join('');
+        
+        const currentYear = new Date().getFullYear().toString();
+        if (uniqueYears.includes(currentYear)) {
+            yearSelect.value = currentYear;
+        }
+
+        generateAnnualSummary();
+        document.getElementById('annualSummaryModal').classList.add('active');
+    }
+
+    function generateAnnualSummary() {
+        const year = document.getElementById('annualSummaryYearSelect').value;
+        const contentDiv = document.getElementById('annualSummaryContent');
+        
+        let totalGross = 0, totalNet = 0, totalOTHours = 0, totalDeductions = 0, totalExpenses = 0;
+        const expenseCategoryTotals = {};
+        
+        months.filter(m => m.key.startsWith(year)).forEach(m => {
+            const monthTotals = totalsFor(m.key);
+            totalGross += monthTotals.gross;
+            totalNet += monthTotals.net;
+            totalDeductions += monthTotals.deductions;
+            totalExpenses += monthTotals.totalExpenses;
+            totalOTHours += (state.ot[m.key] || []).reduce((sum, row) => sum + Number(row.hours || 0), 0);
+            
+            (state.expenses[m.key] || []).forEach(exp => {
+                const cat = exp.category || 'Uncategorized';
+                expenseCategoryTotals[cat] = (expenseCategoryTotals[cat] || 0) + exp.amount;
+            });
+        });
+
+        let html = `
+            <div class="grid grid-3" style="margin-bottom: 24px;">
+                 <div class="stat"><div class="label">Total Gross Income</div><div class="value">${fmtDisplay(totalGross)}</div></div>
+                 <div class="stat"><div class="label">Total Net Income</div><div class="value" style="color:var(--success)">${fmtDisplay(totalNet)}</div></div>
+                 <div class="stat"><div class="label">Total OT Hours</div><div class="value">${totalOTHours.toFixed(1)}h</div></div>
+                 <div class="stat"><div class="label">Total Deductions</div><div class="value" style="color:var(--warning)">${fmtDisplay(totalDeductions)}</div></div>
+                 <div class="stat"><div class="label">Total Expenses</div><div class="value" style="color:var(--danger)">${fmtDisplay(totalExpenses)}</div></div>
+                 <div class="stat"><div class="label">Final Balance</div><div class="value" style="color:var(--success)">${fmtDisplay(totalNet - totalExpenses)}</div></div>
+            </div>
+            <h3 class="section-title" style="font-size: 20px; margin-bottom: 16px;">Expense Breakdown</h3>
+        `;
+        
+        const sortedCategories = Object.keys(expenseCategoryTotals).sort((a,b) => expenseCategoryTotals[b] - expenseCategoryTotals[a]);
+        sortedCategories.forEach(cat => {
+            html += `<div class="annual-summary-item"><strong>${cat}</strong> <span>${fmtDisplay(expenseCategoryTotals[cat])}</span></div>`;
+        });
+        
+        contentDiv.innerHTML = html;
     }
 
     // --- Initialize Everything ---
@@ -2808,11 +3934,16 @@
       }
 
       // Initialize flatpickr on static date inputs
-      flatpickr("#startDate, #endDate, #holidayPicker", {
+      flatpickr("#startDate, #endDate, #holidayPicker, #expenseDate", {
         dateFormat: "Y-m-d",
         altInput: true,
         altFormat: "d M, Y",
       });
+      flatpickr("#blackoutDates", {
+        dateFormat: "Y-m-d", altInput: true, altFormat: "d M, Y", mode: "multiple"
+      });
+      document.getElementById('expenseDate')._flatpickr.setDate(new Date(), true);
+
 
       // Set up smart calculator salary input
       const smartSalaryInput = document.getElementById('smartBasicSalary'); 
@@ -2839,8 +3970,8 @@
         const currentIndex = months.findIndex(m => m.key === currentKey);
         if (currentIndex > 0) {
             const lastMonthKey = months[currentIndex - 1].key;
-            if (confirm(`This will overwrite the current settings for ${months[currentIndex].label} with the settings from ${months[currentIndex - 1].label}. Are you sure?`)) {
-                // Keep OT data, but copy params
+            if (confirm(`This will overwrite the current settings for ${months[currentIndex].label} with the data from ${months[currentIndex - 1].label}. Are you sure?`)) {
+                // Copy params
                 state.params[currentKey] = { ...state.params[lastMonthKey] };
                 saveState();
                 refresh();
@@ -2871,8 +4002,8 @@
       });
       
       document.getElementById('resetAll').addEventListener('click', () => {
-        if (confirm('⚠️ This will reset ALL data including settings and OT entries for all months. Are you absolutely sure? This cannot be undone.')) {
-          localStorage.removeItem('salary-ot-state-v3');
+        if (confirm('⚠️ This will reset ALL data including settings, OT entries, and expenses for all months. Are you absolutely sure? This cannot be undone.')) {
+          localStorage.removeItem('salary-ot-state-v5');
           state = loadState();
           showSaveMessage('🔄 All data has been reset to defaults');
           // Repopulate dropdown after reset
@@ -2897,6 +4028,21 @@
           document.getElementById('whatIfHoursLabel').textContent = `${hours.toFixed(1)}h`;
           updateWhatIf(hours);
       });
+      
+      // NEW: Smart Goal Listeners
+      smartGoalToggle.addEventListener('change', () => {
+        updateSmartGoalUI();
+        saveParams(monthSelect.value); // Save the toggle state and refresh
+      });
+
+      desiredSavings.addEventListener('input', () => {
+          clearTimeout(desiredSavings.saveTimeout);
+          desiredSavings.saveTimeout = setTimeout(() => {
+            state.params[monthSelect.value].desiredSavings = Number(desiredSavings.value || 0);
+            saveState();
+            refresh();
+          }, 1000);
+      });
 
       // Add event listener for basic salary to auto-calculate hourly rate
       basic.addEventListener('input', () => {
@@ -2908,6 +4054,9 @@
       // Auto-save on input changes
       [basic, claims, hpAllow, incentive, advance, epf, socso, pcb, eis, incomeGoal].forEach(input => {
         input.addEventListener('input', () => {
+          // Do not auto-save if smart goal is enabled, as it's controlled automatically
+          if (input.id === 'incomeGoal' && smartGoalToggle.checked) return;
+          
           clearTimeout(input.saveTimeout);
           input.saveTimeout = setTimeout(() => {
             saveParams(monthSelect.value);
@@ -2928,6 +4077,42 @@
       document.getElementById('applyPatternBtn').addEventListener('click', applyOTPattern);
       document.getElementById('savePatternBtn').addEventListener('click', saveCustomPattern);
       document.getElementById('deletePatternBtn').addEventListener('click', deleteCustomPattern);
+      document.getElementById('editPatternBtn').addEventListener('click', editPattern);
+      document.getElementById('patternSelect').addEventListener('change', (e) => {
+        const isCustom = e.target.value.startsWith('custom_');
+        document.getElementById('deletePatternBtn').disabled = !isCustom;
+        document.getElementById('editPatternBtn').disabled = !isCustom;
+        if (!isCustom && editingPatternId) {
+            cancelEditPattern();
+        }
+      });
+
+
+      // Expenses Listeners
+      document.getElementById('addExpenseForm').addEventListener('submit', handleExpenseSubmit);
+      document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
+      document.getElementById('expenseSearch').addEventListener('input', () => renderExpenses(monthSelect.value));
+      document.querySelectorAll('#expensesTable th[data-sort]').forEach(th => {
+          th.addEventListener('click', () => setExpenseSort(th.dataset.sort));
+      });
+      document.getElementById('clearExpensesBtn').addEventListener('click', () => {
+        const key = monthSelect.value;
+        const monthName = months.find(m => m.key === key)?.label || 'this month';
+        if (confirm(`⚠️ Are you sure you want to clear all expenses for ${monthName}?`)) {
+            state.expenses[key] = [];
+            saveState();
+            refresh();
+        }
+      });
+      document.getElementById('copyRecurringExpensesBtn').addEventListener('click', copyRecurringExpenses);
+
+      // Budgeting Listeners
+      document.getElementById('setBudgetsBtn').addEventListener('click', openBudgetModal);
+      document.getElementById('saveBudgetsBtn').addEventListener('click', saveBudgets);
+      
+      // Annual Summary Listeners
+      document.getElementById('viewAnnualSummaryBtn').addEventListener('click', openAnnualSummaryModal);
+      document.getElementById('annualSummaryYearSelect').addEventListener('change', generateAnnualSummary);
 
 
       // Prefill July with known entries if empty
@@ -2959,8 +4144,9 @@
         saveState();
       }
 
-      // Initialize charts and refresh
+      // Initialize charts, modals, and refresh
       initCharts();
+      setupModals();
       refresh();
     });
   </script>
