@@ -697,9 +697,15 @@
                 <h3 class="card-title">📊 Monthly Summary</h3>
                 <div class="stat-value" id="totalIncome">RM 0.00</div>
                 <div class="stat-label">Total Income (with OT)</div>
-                <div style="margin-top: 15px;">
-                    <div class="stat-label">Net Income</div>
-                    <div style="font-size: 1.8em; color: #4caf50; font-weight: bold;" id="netIncome">RM 0.00</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; text-align: center;">
+                    <div>
+                        <div class="stat-label">Base Net Salary</div>
+                        <div style="font-size: 1.8em; color: #333; font-weight: bold;" id="baseNetSalaryDashboard">RM 0.00</div>
+                    </div>
+                    <div>
+                        <div class="stat-label">Net Income (with OT)</div>
+                        <div style="font-size: 1.8em; color: #4caf50; font-weight: bold;" id="netIncome">RM 0.00</div>
+                    </div>
                 </div>
             </div>
             
@@ -1052,6 +1058,26 @@
                     </div>
                 </div>
 
+                <h4 style="margin-top: 20px; margin-bottom: 15px;">Daily Hour Limits (Optional)</h4>
+                <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                    <div class="form-group">
+                        <label>Max Weekday Hours</label>
+                        <input type="number" id="maxHoursWeekday" placeholder="Default: 8" step="0.25" oninput="debouncedAllocation()">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Saturday Hours</label>
+                        <input type="number" id="maxHoursSaturday" placeholder="Default: 8" step="0.25" oninput="debouncedAllocation()">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Sunday Hours</label>
+                        <input type="number" id="maxHoursSunday" placeholder="Default: 8" step="0.25" oninput="debouncedAllocation()">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Public Holiday Hours</label>
+                        <input type="number" id="maxHoursPH" placeholder="Default: 8" step="0.25" oninput="debouncedAllocation()">
+                    </div>
+                </div>
+
                 <button class="btn btn-success" onclick="generateAndApplyOT()">🚀 Generate & Apply Schedule</button>
                 <button class="btn btn-warning" onclick="previewOTAllocation()">👁️ Preview Allocation</button>
                 <button class="btn" onclick="applyOTAllocation()">✅ Apply Allocation</button>
@@ -1170,7 +1196,11 @@
                         <div style="font-size: 1.8em; font-weight: bold; color: #ff9800;" id="summaryDeductions">RM 0.00</div>
                     </div>
                      <div class="summary-item">
-                        <div class="stat-label">Net Income</div>
+                        <div class="stat-label">Base Net Salary</div>
+                        <div style="font-size: 1.8em; font-weight: bold; color: #17a2b8;" id="summaryBaseNet">RM 0.00</div>
+                    </div>
+                     <div class="summary-item">
+                        <div class="stat-label">Net Income (with OT)</div>
                         <div style="font-size: 1.8em; font-weight: bold; color: #2196f3;" id="summaryNet">RM 0.00</div>
                     </div>
                     <div class="summary-item">
@@ -1840,34 +1870,31 @@
             if (!isSilent) displayOTPreview(totalTargetEarnings);
         }
 
-        function getAvailableRates(startDateStr, endDateStr) {
-            const rates = new Set();
-            let currentDate = new Date(startDateStr);
-            const endDate = new Date(endDateStr);
-             while (currentDate <= endDate) {
-                const dayOfWeek = currentDate.getDay();
-                const dateStr = currentDate.toISOString().split('T')[0];
-                const year = currentDate.getFullYear().toString();
-                if (publicHolidays[year] && publicHolidays[year].includes(dateStr)) {
-                    rates.add(2.0);
-                } else if (dayOfWeek === 0) {
-                    rates.add(0.5);
-                } else {
-                    rates.add(1.5);
-                }
-                currentDate.setDate(currentDate.getDate() + 1);
-            }
-            return Array.from(rates);
+        // --- NEW HELPER FUNCTIONS FOR HOUR LIMITS ---
+        function readHourLimits() {
+            const weekday = parseFloat(document.getElementById('maxHoursWeekday').value) || 8;
+            const saturday = parseFloat(document.getElementById('maxHoursSaturday').value) || 8;
+            const sunday = parseFloat(document.getElementById('maxHoursSunday').value) || 8;
+            const ph = parseFloat(document.getElementById('maxHoursPH').value) || 8;
+            return { weekday, saturday, sunday, publicHoliday: ph };
         }
 
-        /**
-         * [MODIFIED] This function now uses a randomized allocation for duration.
-         * It calculates the total hours, distributes them randomly based on weights,
-         * and then runs a correction loop to precisely match the target.
-         */
+        function getDayTypeFromDate(date) {
+            const dateStr = date.toISOString().split('T')[0];
+            const year = date.getFullYear().toString();
+            if (publicHolidays[year] && publicHolidays[year].includes(dateStr)) return 'publicHoliday';
+            const dayOfWeek = date.getDay();
+            if (dayOfWeek === 0) return 'sunday';
+            if (dayOfWeek === 6) return 'saturday';
+            return 'weekday';
+        }
+
+
         function allocateOTHours(targetAmount, project, startDateStr, endDateStr, strategy, specificRate, dayType, isSilent) {
             const hourlyRate = getHourlyRate();
             if (hourlyRate <= 0) return [];
+            
+            const limits = readHourLimits();
 
             let potentialDays = [];
             let currentDate = new Date(startDateStr);
@@ -1882,22 +1909,22 @@
                 let currentDayType = 'weekday';
 
                 if (publicHolidays[year] && publicHolidays[year].includes(dateStr)) {
-                    rate = 2.0; isWeekend = true; currentDayType = null;
+                    rate = 2.0; isWeekend = true; currentDayType = 'publicHoliday';
                 } else if (dayOfWeek === 0) {
-                    rate = 0.5; isWeekend = true; currentDayType = null;
+                    rate = 0.5; isWeekend = true; currentDayType = 'sunday';
                 } else if (dayOfWeek === 6) {
                     rate = 1.5; isWeekend = true; currentDayType = 'saturday';
                 }
                 
                 let match = false;
                 if (rate === specificRate) {
-                    if (dayType === 'weekday' && !isWeekend) match = true;
+                    if (dayType === 'weekday' && currentDayType === 'weekday') match = true;
                     else if (dayType === 'saturday' && currentDayType === 'saturday') match = true;
-                    else if (!dayType && (rate === 0.5 || rate === 2.0)) match = true;
+                    else if (!dayType && (currentDayType === 'sunday' || currentDayType === 'publicHoliday')) match = true;
                 }
 
                 if (match) {
-                    potentialDays.push({ date: new Date(currentDate), rate, isWeekend });
+                    potentialDays.push({ date: new Date(currentDate), rate, isWeekend, limit: limits[currentDayType] });
                 }
                 currentDate.setDate(currentDate.getDate() + 1);
             }
@@ -1909,7 +1936,7 @@
             else if (strategy === 'front-load-weekdays') potentialDays.sort((a, b) => a.isWeekend - b.isWeekend || a.date - b.date);
 
             let totalHoursNeeded = targetAmount / (hourlyRate * specificRate);
-            const maxPossibleHours = potentialDays.length * 8;
+            const maxPossibleHours = potentialDays.reduce((sum, day) => sum + day.limit, 0);
             if (totalHoursNeeded > maxPossibleHours) {
                 totalHoursNeeded = maxPossibleHours;
             }
@@ -1922,23 +1949,20 @@
                 isWeekend: day.isWeekend,
                 hours: 0,
                 amount: 0,
-                remarks: project + ' - ' + generateTaskDescription(day.date)
+                remarks: project + ' - ' + generateTaskDescription(day.date),
+                limit: day.limit
             }));
 
-            // --- NEW RANDOMIZED DURATION LOGIC ---
-            // Step 1: Assign random weights for duration distribution
             entries.forEach(entry => { entry.weight = Math.random(); });
 
-            // Step 2: Calculate initial proportional hours based on weights
             const totalWeight = entries.reduce((sum, e) => sum + e.weight, 0);
             if (totalWeight > 0) {
                 entries.forEach(entry => {
                     const idealHours = (entry.weight / totalWeight) * totalHoursNeeded;
-                    entry.hours = Math.min(8, Math.round(idealHours * 4) / 4);
+                    entry.hours = Math.min(entry.limit, Math.round(idealHours * 4) / 4);
                 });
             }
 
-            // Step 3: Correct for rounding errors to precisely match the target hours
             let currentTotalHours = entries.reduce((sum, e) => sum + e.hours, 0);
             let hourDifference = round2(totalHoursNeeded - currentTotalHours);
             let safetyNet = 0;
@@ -1947,7 +1971,7 @@
                 const increment = 0.25 * Math.sign(hourDifference);
 
                 if (increment > 0) {
-                    let eligibleToAdd = entries.filter(e => e.hours < 8);
+                    let eligibleToAdd = entries.filter(e => e.hours < e.limit);
                     if (eligibleToAdd.length === 0) break;
                     const randomIndex = Math.floor(Math.random() * eligibleToAdd.length);
                     eligibleToAdd[randomIndex].hours += increment;
@@ -1961,7 +1985,6 @@
                 hourDifference = round2(hourDifference - increment);
                 safetyNet++;
             }
-            // --- END OF NEW LOGIC ---
 
             entries.forEach(entry => {
                 entry.hours = round2(entry.hours);
@@ -2021,14 +2044,15 @@
             let safetyNet = 0;
 
             while (Math.abs(gap) > 0.01 && safetyNet < 200) {
-                let entryToBoost = overtimeEntries.find(e => e.hours < 8);
+                let entryToBoost = overtimeEntries.find(e => e.hours < (e.limit || 8));
                 if (!entryToBoost) {
-                    console.warn("Could not meet OT target because all available days are maxed out at 8 hours.");
+                    console.warn("Could not meet OT target because all available days are maxed out at their limits.");
                     break;
                 }
 
+                const limit = entryToBoost.limit || 8;
                 const earningsPerIncrement = 0.25 * hourly * entryToBoost.rate;
-                const canAddHours = 8 - entryToBoost.hours;
+                const canAddHours = limit - entryToBoost.hours;
                 
                 if (gap >= earningsPerIncrement && canAddHours >= 0.25) {
                     entryToBoost.hours += 0.25;
@@ -2040,7 +2064,7 @@
                         gap = 0;
                     } else {
                         const partialAmount = canAddHours * hourly * entryToBoost.rate;
-                        entryToBoost.hours = 8;
+                        entryToBoost.hours = limit;
                         gap -= partialAmount;
                     }
                 }
@@ -2102,7 +2126,7 @@
             if (targetAmount && totalAmount < targetAmount * 0.99) {
                 const warning = document.createElement('div');
                 warning.className = 'alert alert-warning';
-                warning.innerHTML = `<strong>Warning:</strong> Target of RM ${targetAmount.toFixed(2)} could not be reached with the 8-hour daily cap. The maximum achievable is <strong>RM ${totalAmount.toFixed(2)}</strong>.`;
+                warning.innerHTML = `<strong>Warning:</strong> Target of RM ${targetAmount.toFixed(2)} could not be reached with the specified daily limits. The maximum achievable is <strong>RM ${totalAmount.toFixed(2)}</strong>.`;
                 contentDiv.prepend(warning);
             }
 
@@ -2120,13 +2144,7 @@
         
         function getDayType(entry) {
             const date = new Date(entry.date);
-            const dateStr = entry.date;
-            const year = date.getFullYear().toString();
-            if (publicHolidays[year] && publicHolidays[year].includes(dateStr)) return 'publicHoliday';
-            const dayOfWeek = date.getDay();
-            if (dayOfWeek === 0) return 'sunday';
-            if (dayOfWeek === 6) return 'saturday';
-            return 'weekday';
+            return getDayTypeFromDate(date);
         }
 
         function displayOTEntries() {
@@ -2229,8 +2247,13 @@
             if (entryIndex === -1) return;
             
             const entry = overtimeEntries[entryIndex];
+            const limit = entry.limit || 8;
             entry.hours += amount;
             if (entry.hours < 0) entry.hours = 0;
+            if (entry.hours > limit) {
+                alert(`Cannot exceed the daily limit of ${limit} hours.`);
+                entry.hours = limit;
+            }
 
             const hourlyRate = salaryData.basic / 26 / 8;
             entry.amount = entry.hours * entry.rate * hourlyRate;
@@ -2264,6 +2287,19 @@
 
             const newTotalHours = totalOriginalHours + adjustment;
             const scalingFactor = newTotalHours / totalOriginalHours;
+
+            let exceededLimit = false;
+            entriesForDayType.forEach(entry => {
+                const newHours = entry.hours * scalingFactor;
+                if (newHours > (entry.limit || 8)) {
+                    exceededLimit = true;
+                }
+            });
+
+            if (exceededLimit) {
+                alert(`This adjustment would exceed the daily limit for one or more entries.`);
+                return;
+            }
 
             entriesForDayType.forEach(entry => {
                 entry.hours *= scalingFactor;
@@ -2304,8 +2340,9 @@
                 hours = Math.round(rawHours * 4) / 4;
             }
             
-            if (hours > 24) {
-                alert("An overtime entry cannot exceed 24 hours.");
+            const limit = overtimeEntries[entryIndex].limit || 8;
+            if (hours > limit) {
+                alert(`An overtime entry cannot exceed the daily limit of ${limit} hours.`);
                 displayOTEntries();
                 return;
             }
@@ -2726,11 +2763,18 @@
             const grossIncome = (salaryData.basic || 0) + (salaryData.claims || 0) + (salaryData.hpAllowance || 0) + (salaryData.incentive || 0) + (salaryData.bonus || 0) + (salaryData.otherIncome || 0) + totalOT;
             const totalDeductions = (salaryData.epf || 0) + (salaryData.socso || 0) + (salaryData.eis || 0) + (salaryData.pcb || 0) + (salaryData.cashAdvance || 0) + (salaryData.otherDeductions || 0);
             const netIncome = grossIncome - totalDeductions;
-            const totalMyShare = expenses.filter(e => !e.isExcluded).reduce((sum, e) => sum + e.myShare, 0);
-            const actualSavings = netIncome - totalMyShare;
-
+            
+            const baseGrossIncome = grossIncome - totalOT;
+            const baseDeductionsObj = calculateDeductions(salaryData, 0);
+            const totalBaseDeductions = baseDeductionsObj.epf + baseDeductionsObj.socso + baseDeductionsObj.eis + baseDeductionsObj.pcb + (salaryData.cashAdvance || 0) + (salaryData.otherDeductions || 0);
+            const baseNetSalary = baseGrossIncome - totalBaseDeductions;
+            
+            document.getElementById('baseNetSalaryDashboard').textContent = fmtRM(baseNetSalary);
             document.getElementById('totalIncome').textContent = fmtRM(grossIncome);
             document.getElementById('netIncome').textContent = fmtRM(netIncome);
+
+            const totalMyShare = expenses.filter(e => !e.isExcluded).reduce((sum, e) => sum + e.myShare, 0);
+            const actualSavings = netIncome - totalMyShare;
             
             const target = parseFloat(document.getElementById('targetSavings').value) || 0;
             document.getElementById('savingsTargetDisplay').textContent = fmtRM(target);
@@ -2819,10 +2863,14 @@
           if (!Array.isArray(overtimeEntries) || overtimeEntries.length === 0) {
             const date = pickNextWorkdayString(win);
             const rate = rateForDate(date);
+            const limits = readHourLimits();
+            const dayType = getDayTypeFromDate(new Date(date));
+            const limit = limits[dayType];
+            
             let hoursNeeded = gap / (hourly * rate);
 
             hoursNeeded = Math.ceil(hoursNeeded * 4) / 4;
-            hoursNeeded = Math.max(1, Math.min(8, hoursNeeded));
+            hoursNeeded = Math.max(1, Math.min(limit, hoursNeeded));
 
             const start = '18:00';
             const end = addHoursToTime(start, hoursNeeded);
@@ -2834,6 +2882,7 @@
               rate,
               amount: round2(hoursNeeded * hourly * rate),
               remarks: 'Auto top-up (Meet Target)',
+              limit: limit
             };
 
             overtimeEntries.push(entry);
@@ -2848,8 +2897,9 @@
           let remaining = gap;
 
           for (const e of overtimeEntries) {
-            if (e.hours >= 8) continue;
-            const canAddHrs = 8 - e.hours;
+            const limit = e.limit || 8;
+            if (e.hours >= limit) continue;
+            const canAddHrs = limit - e.hours;
             const addHrsRaw = remaining / (hourly * e.rate);
             let addHrs = Math.min(canAddHrs, Math.ceil(addHrsRaw * 4) / 4);
             if (addHrs <= 0) continue;
@@ -2865,9 +2915,13 @@
           if (remaining > 0.01) {
             const date = pickNextWorkdayString(win);
             const rate = rateForDate(date);
+            const limits = readHourLimits();
+            const dayType = getDayTypeFromDate(new Date(date));
+            const limit = limits[dayType];
+
             let hoursNeeded = remaining / (hourly * rate);
             hoursNeeded = Math.ceil(hoursNeeded * 4) / 4;
-            hoursNeeded = Math.max(1, Math.min(8, hoursNeeded));
+            hoursNeeded = Math.max(1, Math.min(limit, hoursNeeded));
             const start = '18:00';
             const end = addHoursToTime(start, hoursNeeded);
             overtimeEntries.push({
@@ -2877,6 +2931,7 @@
               rate,
               amount: round2(hoursNeeded * hourly * rate),
               remarks: 'Auto extra top-up',
+              limit: limit
             });
           }
 
@@ -2892,6 +2947,11 @@
             const totalDeductions = (salaryData.epf || 0) + (salaryData.socso || 0) + (salaryData.eis || 0) + (salaryData.pcb || 0) + (salaryData.cashAdvance || 0) + (salaryData.otherDeductions || 0);
             const netIncome = grossIncome - totalDeductions;
             
+            const baseGrossIncome = grossIncome - totalOT;
+            const baseDeductionsObj = calculateDeductions(salaryData, 0);
+            const totalBaseDeductions = baseDeductionsObj.epf + baseDeductionsObj.socso + baseDeductionsObj.eis + baseDeductionsObj.pcb + (salaryData.cashAdvance || 0) + (salaryData.otherDeductions || 0);
+            const baseNetSalary = baseGrossIncome - totalBaseDeductions;
+            
             const includedExpenses = expenses.filter(e => !e.isExcluded);
             const totalMyShare = includedExpenses.reduce((sum, e) => sum + e.myShare, 0);
             const totalFullAmount = includedExpenses.reduce((sum, e) => sum + e.fullAmount, 0);
@@ -2903,6 +2963,7 @@
             
             document.getElementById('summaryGross').textContent = fmtRM(grossIncome);
             document.getElementById('summaryDeductions').textContent = fmtRM(totalDeductions);
+            document.getElementById('summaryBaseNet').textContent = fmtRM(baseNetSalary);
             document.getElementById('summaryNet').textContent = fmtRM(netIncome);
             document.getElementById('summaryExpenses').textContent = fmtRM(expensesToDisplay);
             document.getElementById('summarySavings').textContent = fmtRM(personalSavings);
