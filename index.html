@@ -12,6 +12,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <!-- html2canvas for rendering UI to image for PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- FullCalendar for Calendar View -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -681,6 +684,94 @@
             visibility: visible;
             opacity: 1;
         }
+        
+        /* --- NEW: MINI SIMULATOR STYLES --- */
+        .mini-simulator {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+        }
+        .mini-simulator h4 {
+            margin-bottom: 15px;
+        }
+        .mini-simulator-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .mini-simulator-result {
+            margin-top: 15px;
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #28a745;
+        }
+
+        /* --- NEW: CALENDAR STYLES --- */
+        #otCalendar {
+            margin-top: 20px;
+        }
+        .fc-event {
+            padding: 5px;
+            font-size: 0.85em;
+            border-radius: 5px !important;
+            border: none !important;
+        }
+        .fc-event-main {
+            color: white !important;
+        }
+        .rate-0-5 { background-color: #ffc107 !important; color: #333 !important; }
+        .rate-1-5 { background-color: #667eea !important; }
+        .rate-2-0 { background-color: #28a745 !important; }
+        .rate-3-0 { background-color: #dc3545 !important; }
+
+        .fc-daygrid-day.fc-day-today {
+            background-color: rgba(102, 126, 234, 0.1) !important;
+        }
+
+        /* --- NEW: In-Calendar Adjuster Styles --- */
+        .fc-event-content-wrapper {
+            display: flex;
+            flex-direction: column; /* Stack info and adjuster vertically */
+            align-items: center;    /* Center align items */
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding: 2px 0;
+            text-align: center; /* Center text for main info */
+        }
+        .fc-event-main-info {
+            flex-grow: 1;
+            cursor: pointer;
+            width: 100%; /* Ensure it takes full width */
+        }
+        .fc-event-adjuster {
+            display: flex;
+            flex-direction: row; /* Make buttons horizontal */
+            gap: 5px; /* Space between buttons */
+            margin-top: 4px; /* Space above buttons */
+            justify-content: center; /* Center the buttons */
+            width: 100%;
+        }
+        .adjust-btn {
+            background: rgba(255, 255, 255, 0.3);
+            border: none;
+            color: white;
+            width: 22px; /* Slightly wider */
+            height: 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            line-height: 18px;
+            text-align: center;
+            padding: 0;
+            font-size: 14px;
+        }
+        .adjust-btn:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
 
 
         @media (max-width: 768px) {
@@ -730,7 +821,7 @@
             <div class="card">
                 <h3 class="card-title" id="dashboardTitle">Current Month's Finances</h3>
                 <div class="stat-value" id="totalIncome">RM 0.00</div>
-                <div class="stat-label" id="totalIncomeLabel">Total Income</div>
+                <div class="stat-label" id="totalIncomeLabel">Total Income (incl. Claims)</div>
                  <div class="summary-item" style="padding: 10px; margin-top: 10px;">
                     <div class="stat-label" id="otPaidThisMonthLabel">OT Paid This Month</div>
                     <div style="font-size: 1.5em; font-weight: bold; color: #764ba2;" id="otPaidThisMonth">RM 0.00</div>
@@ -752,15 +843,20 @@
             </div>
             
             <div class="card">
-                <h3 class="card-title">🎯 Next Month's Savings Projection</h3>
+                <h3 class="card-title">🎯 This Month's Savings Goal</h3>
                 <div class="stat-value" id="savingsTargetDisplay">RM 0.00</div>
                 <div class="stat-label">Target Savings</div>
-                <div style="margin-top: 15px;">
-                    <div class="stat-label" id="actualVsTargetLabel">Projected Savings vs Target</div>
+                <div class="summary-item" style="padding: 10px; margin-top: 15px; text-align: center;">
+                    <div class="stat-label">Projected OT Pay (Next Month)</div>
+                    <div style="font-size: 1.8em; font-weight: bold; color: #764ba2;" id="projectedNextMonthOT">RM 0.00</div>
+                </div>
+                <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+                    <div class="stat-label" id="actualVsTargetLabel">Actual Savings vs Target</div>
                     <div style="font-size: 1.5em; font-weight: bold;" id="savingsStatus">
                         <span id="savingsActual" data-value="0">RM 0.00</span>
-                        <div id="savingsIndicatorContainer">
+                        <div id="savingsIndicatorContainer" style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 5px;">
                             <span id="savingsIndicator" class="savings-indicator">On Track</span>
+                            <button id="topUpBtn" class="btn btn-small btn-warning" style="display: none; margin: 0;" onclick="launchTopUpModal()">Top Up</button>
                         </div>
                     </div>
                 </div>
@@ -778,16 +874,16 @@
         </div>
 
         <div class="tabs">
-            <div class="tab active" onclick="switchTab(event, 'salary')">💵 Salary & Auto-Deductions</div>
-            <div class="tab" onclick="switchTab(event, 'targets')">🎯 Savings Targets</div>
-            <div class="tab" onclick="switchTab(event, 'sinking-funds')">🌱 Future Goals & Sinking Funds</div>
-            <div class="tab" onclick="switchTab(event, 'expenses')">📝 Expenses Tracker</div>
-            <div class="tab" onclick="switchTab(event, 'overtime')">⏰ Smart OT Allocator</div>
-            <div class="tab" onclick="switchTab(event, 'summary')">📊 Financial Summary</div>
+            <div class="tab" id="tab-btn-salary" onclick="switchTab(event, 'salary')">💵 Salary & Auto-Deductions</div>
+            <div class="tab active" id="tab-btn-targets" onclick="switchTab(event, 'targets')">🎯 Savings Targets</div>
+            <div class="tab" id="tab-btn-sinking-funds" onclick="switchTab(event, 'sinking-funds')">🌱 Future Goals & Sinking Funds</div>
+            <div class="tab" id="tab-btn-expenses" onclick="switchTab(event, 'expenses')">📝 Expenses Tracker</div>
+            <div class="tab" id="tab-btn-overtime" onclick="switchTab(event, 'overtime')">⏰ Smart OT Allocator</div>
+            <div class="tab" id="tab-btn-summary" onclick="switchTab(event, 'summary')">📊 Financial Summary</div>
         </div>
 
         <!-- Salary Input Tab -->
-        <div id="salary-tab" class="tab-content active">
+        <div id="salary-tab" class="tab-content">
             <div class="form-section">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h3 class="card-title">Monthly Salary Input with Auto-Deductions</h3>
@@ -858,12 +954,12 @@
         </div>
 
         <!-- Savings Targets Tab -->
-        <div id="targets-tab" class="tab-content">
+        <div id="targets-tab" class="tab-content active">
             <div class="form-section">
-                <h3 class="card-title">Savings Target Calculator</h3>
+                <h3 class="card-title">Savings Target & OT Planner</h3>
                 
                 <div class="alert alert-success">
-                    💡 Set your monthly savings target. The system will calculate the overtime you need to work **this month** to achieve your savings goal **next month**.
+                    💡 Set your monthly savings target. The system will calculate the overtime you need to work **this OT period** to help achieve your savings goal **next month**.
                 </div>
                 
                 <div class="form-grid">
@@ -890,7 +986,7 @@
                 </label>
                                 
                 <div id="savingsAnalysis" style="margin-top: 30px; display: none;">
-                    <h4>Savings Analysis & Recommendations</h4>
+                    <h4>Next Month's Savings Projection</h4>
                     <div class="alert" id="savingsAlert"></div>
                      <!-- AI COACH SECTION -->
                     <div id="aiCoachSection" class="alert alert-warning" style="display: none;">
@@ -912,12 +1008,28 @@
                         <div class="summary-item">
                             <div class="stat-label">OT Needed for Next Month's Goal</div>
                             <div style="font-size: 1.5em; font-weight: bold; color: #ff9800;" id="otRequired">RM 0.00</div>
+                             <!-- NEW: "One-Click OT Plan" Button -->
+                            <button id="createOTPlanBtn" class="btn btn-small" style="margin-top: 10px;" onclick="createOTPlan()">Create OT Plan for this Target</button>
                         </div>
                         <div class="summary-item">
-                            <div class="stat-label">Hours to Work This Month</div>
+                            <div class="stat-label">Hours to Work This Period</div>
                             <div style="font-size: 1.5em; font-weight: bold; color: #2196f3;" id="hoursNeeded">0 hrs</div>
                         </div>
                     </div>
+                    
+                    <!-- NEW: Interactive "What-If" Levers -->
+                    <div class="mini-simulator" id="miniSimulatorSection" style="display: none;">
+                        <h4>How can I reduce my needed OT?</h4>
+                        <div class="mini-simulator-controls">
+                            <span>If I reduce my</span>
+                            <select id="miniSimExpenseCategory" class="form-group" style="width: auto; padding: 5px;" onchange="runMiniSimulator()"></select>
+                            <span>spending by</span>
+                            <input type="number" id="miniSimExpenseReduction" class="form-group" style="width: 80px; padding: 5px;" value="10" oninput="runMiniSimulator()">
+                            <span>%...</span>
+                        </div>
+                        <div id="miniSimulatorResult" class="mini-simulator-result"></div>
+                    </div>
+
                 </div>
                 
                 <h4 style="margin-top: 30px; padding-top: 30px; border-top: 1px solid #e0e0e0; display: flex; align-items: center;">
@@ -1017,8 +1129,16 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label>Your Share (RM)</label>
+                        <input type="number" id="myShare" step="0.01" oninput="updateShares('mine')">
+                    </div>
+                     <div class="form-group">
+                        <label>Partner's Share (RM)</label>
+                        <input type="number" id="partnerShare" step="0.01" oninput="updateShares('partner')">
+                    </div>
+                    <div class="form-group">
                         <label>Full Amount (RM)</label>
-                        <input type="number" id="expenseFullAmount" step="0.01" oninput="applySplitProfile()">
+                        <input type="number" id="expenseFullAmount" step="0.01" readonly style="background: #f0f0f0;">
                     </div>
                     <div class="form-group">
                         <label>Split Profile</label>
@@ -1028,14 +1148,6 @@
                             <option value="partner100">Partner Pays 100%</option>
                             <option value="equal50">Split 50/50</option>
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Your Share (RM)</label>
-                        <input type="number" id="myShare" step="0.01" oninput="updateShares('mine')">
-                    </div>
-                     <div class="form-group">
-                        <label>Partner's Share (RM)</label>
-                        <input type="number" id="partnerShare" step="0.01" oninput="updateShares('partner')">
                     </div>
                     <div class="form-group">
                         <label>Description</label>
@@ -1200,21 +1312,8 @@
                     <h4 style="margin-top: 30px;">Current OT Entries</h4>
                     <button class="btn btn-small btn-danger" onclick="deleteAllOTEntries()">Delete All</button>
                 </div>
-                <table id="otTable">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Start</th>
-                            <th>End</th>
-                            <th>Hours</th>
-                            <th>Rate</th>
-                            <th>Remarks</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="otTableBody">
-                    </tbody>
-                </table>
+                <!-- NEW: Calendar View Container -->
+                <div id="otCalendar"></div>
             </div>
         </div>
 
@@ -1354,6 +1453,80 @@
         </div>
     </div>
 
+    <!-- NEW: Recurring Expenses Prompt Modal -->
+    <div id="recurring-prompt-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeRecurringPrompt()">&times;</span>
+            <h2>It's a New Month!</h2>
+            <p id="recurringPromptText" style="margin: 15px 0;">You have X recurring expenses. Would you like to add them now?</p>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeRecurringPrompt()">Maybe Later</button>
+                <button class="btn btn-success" onclick="applyRecurringFromPrompt()">Yes, Add Them</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Top Up Options Modal -->
+    <div id="topup-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeTopUpModal()">&times;</span>
+            <h2 id="topUpModalTitle">How would you like to meet your savings goal?</h2>
+            <p id="topUpModalText" style="margin: 15px 0; text-align: center; font-size: 1.1em;"></p>
+            <div class="btn-group" style="margin-top: 20px;">
+                <button class="btn btn-success" onclick="topUpFromClaims()">🧾 Top Up From Claims</button>
+                <button class="btn" onclick="planOTForTarget()">⏰ Plan More OT (for Next Month)</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NEW: OT Entry Edit Modal -->
+    <div id="ot-edit-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeOTEditModal()">&times;</span>
+            <h2>Edit Overtime Entry</h2>
+            <input type="hidden" id="otEditId">
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="text" id="otEditDate">
+                </div>
+                <div class="form-group">
+                    <label>Rate</label>
+                    <select id="otEditRate">
+                        <option value="0.5">0.5x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2.0">2.0x</option>
+                        <option value="3.0">3.0x</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Start Time</label>
+                    <input type="time" id="otEditStartTime">
+                </div>
+                <div class="form-group">
+                    <label>End Time</label>
+                    <input type="time" id="otEditEndTime">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Hours</label>
+                    <div class="hours-input-group">
+                        <button onclick="adjustModalHour(-0.25)">-</button>
+                        <input type="number" step="0.25" id="otEditHours">
+                        <button onclick="adjustModalHour(0.25)">+</button>
+                    </div>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Remarks</label>
+                    <input type="text" id="otEditRemarks">
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                <button class="btn btn-danger" onclick="deleteOTEntryFromModal()">Delete Entry</button>
+                <button class="btn btn-success" onclick="saveOTEntryFromModal()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Flatpickr JS -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -1363,12 +1536,6 @@
         const round2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
         const fmtRM = n => `RM ${round2(n).toFixed(2)}`;
         
-        /**
-         * Calculates the end time given a start time and a duration in hours.
-         * @param {string} timeStr - The start time in "HH:MM" format.
-         * @param {number} hours - The duration in hours (can be a decimal).
-         * @returns {string} The calculated end time in "HH:MM" format.
-         */
         function addHoursToTime(timeStr, hours) {
             if (!timeStr) return '';
             const [startHour, startMinute] = timeStr.split(':').map(Number);
@@ -1379,14 +1546,13 @@
             const endHour = Math.floor(totalEndMinutes / 60);
             const endMinute = Math.round(totalEndMinutes % 60);
             
-            // Handle cases where minutes round up to 60
             const finalHour = endHour + Math.floor(endMinute / 60);
             const finalMinute = endMinute % 60;
 
             return `${String(finalHour % 24).padStart(2, '0')}:${String(finalMinute).padStart(2, '0')}`;
         }
 
-        // --- SIMULATOR LOGIC (IMPROVED) ---
+        // --- SIMULATOR LOGIC ---
         function launchSimulator() {
             const categorySelect = document.getElementById('simExpenseCategory');
             categorySelect.innerHTML = '<option value="">Select Category</option>';
@@ -1394,7 +1560,7 @@
             categories.forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat;
-                option.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+                option.textContent = cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, ' ');
                 categorySelect.appendChild(option);
             });
             document.getElementById('simulator-modal').style.display = 'flex';
@@ -1460,12 +1626,13 @@
         let recurringExpenses = [];
         let previewedOTEntries = [];
         let currentPayPeriod = '';
-        let startDatePicker, endDatePicker, payPeriodPicker, expenseDatePicker, fundDueDatePicker;
+        let startDatePicker, endDatePicker, payPeriodPicker, expenseDatePicker, fundDueDatePicker, otEditDatePicker;
         let expenseSortColumn = 'date';
         let expenseSortDirection = 'desc';
         let manualExpenseSet = false;
         let summaryView = 'my';
         let aiSavingsPlan = {};
+        let otCalendar;
 
 
         const generateId = () => 'id_' + Math.random().toString(36).substr(2, 9);
@@ -1495,7 +1662,7 @@
                 row.fullAmount = full;
             }
             row.splitProfile = row.splitProfile || 'custom';
-            row.isExcluded = row.isExcluded || false; // Ensure isExcluded property exists
+            row.isExcluded = row.isExcluded || false;
             delete row.amount;
             delete row.splitPayment;
             return row;
@@ -1507,6 +1674,7 @@
             
             initializeDatePickers();
             initializeMonthPickers();
+            initializeCalendar();
             
             const savedRecurring = localStorage.getItem('recurringExpenses');
             recurringExpenses = savedRecurring ? JSON.parse(savedRecurring) : [];
@@ -1515,6 +1683,8 @@
             sinkingFunds = savedSinkingFunds ? JSON.parse(savedSinkingFunds) : [];
 
             loadDataForPeriod(currentPayPeriod);
+            
+            checkForRecurringPrompt();
             
             updateAllDisplays();
             runForecast();
@@ -1530,9 +1700,11 @@
             currentPayPeriod = newPeriod;
             localStorage.setItem('lastPayPeriod', newPeriod);
             
-            loadDataForPeriod(currentPayPeriod);
+            loadDataForPeriod(newPeriod);
             setDefaultOtDates();
             updateAllDisplays();
+            
+            checkForRecurringPrompt();
         }
 
         function loadDataForPeriod(period) {
@@ -1605,8 +1777,10 @@
             const payPeriod = document.getElementById('payPeriod').value;
             if (!payPeriod) return;
             const [year, month] = payPeriod.split('-').map(Number);
-            const otStartDate = new Date(year, month - 3, 26);
-            const otEndDate = new Date(year, month - 2, 25);
+            
+            // New logic: 26th of previous month to 25th of current month
+            const otStartDate = new Date(year, month - 2, 26);
+            const otEndDate = new Date(year, month - 1, 25);
             
             startDatePicker.setDate(otStartDate, true);
             endDatePicker.setDate(otEndDate, true);
@@ -1681,9 +1855,20 @@
         function switchTab(event, tabName) {
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            event.target.classList.add('active');
+            
+            let targetElement = event.target;
+            while (targetElement && !targetElement.classList.contains('tab')) {
+                targetElement = targetElement.parentElement;
+            }
+            if(targetElement) {
+                targetElement.classList.add('active');
+            }
+
             document.getElementById(`${tabName}-tab`).classList.add('active');
             if (tabName === 'summary') updateSummary();
+            if (tabName === 'overtime' && otCalendar) {
+                setTimeout(() => otCalendar.render(), 0);
+            }
         }
         
         function updateAndSaveSalary() {
@@ -1752,8 +1937,17 @@
         }
         
         function initializeDatePickers() {
+            const flatpickrConfig = {
+                altInput: true,
+                altFormat: "d/m/Y",
+                dateFormat: "Y-m-d",
+                "locale": {
+                    "firstDayOfWeek": 1 // start week on Monday
+                }
+            };
+
             startDatePicker = flatpickr("#otStartDate", {
-                altInput: true, altFormat: "d/m/Y", dateFormat: "Y-m-d",
+                ...flatpickrConfig,
                 onChange: function(selectedDates, dateStr) {
                     if (endDatePicker.selectedDates.length > 0 && selectedDates[0] > endDatePicker.selectedDates[0]) {
                         endDatePicker.setDate(selectedDates[0], true);
@@ -1763,22 +1957,21 @@
                 }
             });
             endDatePicker = flatpickr("#otEndDate", {
-                altInput: true, altFormat: "d/m/Y", dateFormat: "Y-m-d",
+                ...flatpickrConfig,
                  onChange: function(selectedDates, dateStr) {
                     saveDataForPeriod(currentPayPeriod);
                 }
             });
             expenseDatePicker = flatpickr("#expenseDate", {
-                altInput: true,
-                altFormat: "d/m/Y",
-                dateFormat: "Y-m-d",
+                ...flatpickrConfig,
                 defaultDate: "today"
             });
             fundDueDatePicker = flatpickr("#fundDueDate", {
-                altInput: true,
-                altFormat: "d/m/Y",
-                dateFormat: "Y-m-d",
+                ...flatpickrConfig,
                 minDate: "today"
+            });
+            otEditDatePicker = flatpickr("#otEditDate", {
+                ...flatpickrConfig
             });
         }
 
@@ -1798,8 +1991,102 @@
             payPeriodPicker.setDate(currentPayPeriod, false);
         }
         
+        // --- CALENDAR LOGIC ---
+        function initializeCalendar() {
+            const calendarEl = document.getElementById('otCalendar');
+            otCalendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                firstDay: 1, // Start on Monday
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'shuffleButton dayGridMonth,timeGridWeek'
+                },
+                customButtons: {
+                    shuffleButton: {
+                        text: '🔄 Shuffle',
+                        click: function() {
+                            shuffleSchedule();
+                        }
+                    }
+                },
+                events: (fetchInfo, successCallback, failureCallback) => {
+                    successCallback(formatOTEntriesForCalendar());
+                },
+                eventContent: (arg) => {
+                    const props = arg.event.extendedProps;
+                    let html = `
+                        <div class="fc-event-content-wrapper">
+                            <div class="fc-event-main-info" onclick="openOTEditModal('${props.id}')">
+                                <div style="font-weight: bold;">${props.hours.toFixed(2)}h @ ${props.rate}x</div>
+                                <div>${fmtRM(props.amount)}</div>
+                            </div>
+                            <div class="fc-event-adjuster">
+                                <button class="adjust-btn" onclick="event.stopPropagation(); adjustOTFromCalendar('${props.id}', -0.25)">-</button>
+                                <button class="adjust-btn" onclick="event.stopPropagation(); adjustOTFromCalendar('${props.id}', 0.25)">+</button>
+                            </div>
+                        </div>
+                    `;
+                    return { html: html };
+                }
+            });
+        }
+
+        function formatOTEntriesForCalendar() {
+            return overtimeEntries.map(entry => ({
+                id: entry.id,
+                title: `${entry.hours.toFixed(2)}h - ${fmtRM(entry.amount)}`,
+                start: entry.date,
+                allDay: true,
+                className: `rate-${String(entry.rate).replace('.', '-')}`,
+                extendedProps: {
+                    id: entry.id,
+                    hours: entry.hours,
+                    rate: entry.rate,
+                    amount: entry.amount,
+                    remarks: entry.remarks
+                }
+            }));
+        }
         
-        // --- Start of new percentage logic ---
+        // --- NEW: Function to adjust OT from calendar view ---
+        function adjustOTFromCalendar(entryId, amount) {
+            const entryIndex = overtimeEntries.findIndex(e => e.id === entryId);
+            if (entryIndex === -1) return;
+
+            const entry = overtimeEntries[entryIndex];
+            const newHours = round2(entry.hours + amount);
+
+            if (newHours < 0) return; // Don't allow negative hours
+
+            entry.hours = newHours;
+
+            const hourlyRate = getHourlyRate();
+            if (hourlyRate > 0) {
+                entry.amount = round2(entry.hours * entry.rate * hourlyRate);
+            }
+
+            if (entry.startTime) {
+                entry.endTime = addHoursToTime(entry.startTime, entry.hours);
+            }
+
+            // If hours are 0, remove the entry
+            if (entry.hours === 0) {
+                if (confirm("Hours are zero. Do you want to delete this entry?")) {
+                    overtimeEntries.splice(entryIndex, 1);
+                } else {
+                    // If user cancels deletion, revert hours back
+                    entry.hours = round2(entry.hours - amount);
+                    return;
+                }
+            }
+
+            saveDataForPeriod(currentPayPeriod);
+            displayOTEntries(); // This will refetch events for the calendar
+            updateDashboard();
+        }
+        
+        // --- PERCENTAGE LOGIC ---
         const percentageIds = ['rate0_5', 'rate1_5_weekday', 'rate1_5_saturday', 'rate2_0'];
 
         function readPercentages() {
@@ -1840,7 +2127,6 @@
                 vals = vals.map(v => Math.max(0, Math.round(v * 100 / sum)));
                 let diff = 100 - vals.reduce((a, b) => a + b, 0);
                 
-                // Distribute rounding error
                 let i = 0;
                 while (diff !== 0) {
                     const idx = i % vals.length;
@@ -1850,7 +2136,7 @@
                         diff -= adjustment;
                     }
                     i++;
-                    if (i > 100) break; // Safety break
+                    if (i > 100) break;
                 }
             }
             
@@ -1869,7 +2155,7 @@
             document.getElementById('allocationStrategy').addEventListener('change', (event) => {
                 updatePercentagesForStrategy(event.target.value);
             });
-            normalizePercentages(); // Initial call
+            normalizePercentages();
         }
 
         function updatePercentagesForStrategy(strategy) {
@@ -1881,8 +2167,8 @@
             normalizePercentages();
             handleRealtimeAllocation();
         }
-        // --- End of new percentage logic ---
 
+        // --- OT GENERATION & SHUFFLING ---
         function generateAndApplyOT() {
             generateSmartOTAllocation(false, true); 
             
@@ -1943,7 +2229,6 @@
             if (!isSilent) displayOTPreview(totalTargetEarnings);
         }
 
-        // --- NEW HELPER FUNCTIONS FOR HOUR LIMITS ---
         function readHourLimits() {
             const weekday = parseFloat(document.getElementById('maxHoursWeekday').value) || 8;
             const saturday = parseFloat(document.getElementById('maxHoursSaturday').value) || 8;
@@ -1962,6 +2247,15 @@
             return 'weekday';
         }
 
+        function getRateForDayType(dayType) {
+            switch(dayType) {
+                case 'publicHoliday': return 2.0;
+                case 'sunday': return 0.5;
+                case 'saturday':
+                case 'weekday':
+                default: return 1.5;
+            }
+        }
 
         function allocateOTHours(targetAmount, project, startDateStr, endDateStr, strategy, specificRate, dayType, isSilent, randomizeDuration = true) {
             const hourlyRate = getHourlyRate();
@@ -2083,14 +2377,7 @@
                 
                 const startHour = startHourBase + randomHourOffset;
                 entry.startTime = `${String(startHour).padStart(2, '0')}:${String(randomMinute).padStart(2, '0')}`;
-
-                const totalStartMinutes = (startHour * 60) + randomMinute;
-                const totalDurationMinutes = entry.hours * 60;
-                const totalEndMinutes = totalStartMinutes + totalDurationMinutes;
-
-                const endHour = Math.floor(totalEndMinutes / 60);
-                const endMinute = Math.round(totalEndMinutes % 60);
-                entry.endTime = `${String(endHour % 24).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`;
+                entry.endTime = addHoursToTime(entry.startTime, entry.hours);
             });
             
             return entries.filter(e => e.hours > 0);
@@ -2235,45 +2522,22 @@
         }
 
         function displayOTEntries() {
-            const tbody = document.getElementById('otTableBody');
-            tbody.innerHTML = '';
+            if (otCalendar) {
+                otCalendar.refetchEvents();
+                const startDate = document.getElementById('otStartDate').value;
+                if(startDate) {
+                    otCalendar.gotoDate(startDate);
+                }
+            }
+            
             let totalHours = 0, totalAmount = 0;
             let hoursByDayType = { weekday: 0, saturday: 0, sunday: 0, publicHoliday: 0 };
 
-            overtimeEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
-            
             overtimeEntries.forEach(entry => {
                 totalHours += entry.hours; 
                 totalAmount += entry.amount;
-                
                 const dayType = getDayType(entry);
                 hoursByDayType[dayType] += entry.hours;
-
-                const row = tbody.insertRow();
-                row.id = `ot-row-${entry.id}`;
-                row.innerHTML = `
-                    <td><input type="date" value="${entry.date}" onchange="saveOTEntry('${entry.id}')"></td>
-                    <td><input type="time" value="${entry.startTime}" onchange="saveOTEntry('${entry.id}')"></td>
-                    <td><input type="time" value="${entry.endTime}" onchange="saveOTEntry('${entry.id}')"></td>
-                    <td>
-                        <div class="hours-input-group">
-                            <button onclick="adjustHour('${entry.id}', -0.25)">-</button>
-                            <input type="number" step="0.25" value="${entry.hours.toFixed(2)}" onchange="saveOTEntry('${entry.id}')">
-                            <button onclick="adjustHour('${entry.id}', 0.25)">+</button>
-                        </div>
-                    </td>
-                    <td>
-                        <select onchange="saveOTEntry('${entry.id}')">
-                            <option value="0.5" ${entry.rate === 0.5 ? 'selected' : ''}>0.5x</option>
-                            <option value="1.5" ${entry.rate === 1.5 ? 'selected' : ''}>1.5x</option>
-                            <option value="2.0" ${entry.rate === 2.0 ? 'selected' : ''}>2.0x</option>
-                            <option value="3.0" ${entry.rate === 3.0 ? 'selected' : ''}>3.0x</option>
-                        </select>
-                    </td>
-                    <td><input type="text" value="${entry.remarks}" onchange="saveOTEntry('${entry.id}')"></td>
-                    <td>
-                        <button class="btn btn-small btn-danger" onclick="deleteOTEntry('${entry.id}')">Delete</button>
-                    </td>`;
             });
             
             document.getElementById('totalOTHoursSummary').textContent = totalHours.toFixed(2);
@@ -2329,35 +2593,6 @@
             }
         }
         
-        function adjustHour(id, amount) {
-            const entryIndex = overtimeEntries.findIndex(e => e.id == id);
-            if (entryIndex === -1) return;
-            
-            const entry = overtimeEntries[entryIndex];
-            const limit = entry.limit || 8;
-            entry.hours += amount;
-            if (entry.hours < 0) entry.hours = 0;
-            if (entry.hours > limit) {
-                alert(`Cannot exceed the daily limit of ${limit} hours.`);
-                entry.hours = limit;
-            }
-
-            const hourlyRate = salaryData.basic / 26 / 8;
-            entry.amount = entry.hours * entry.rate * hourlyRate;
-
-            if (entry.startTime) {
-                const [startHour, startMinute] = entry.startTime.split(':').map(Number);
-                const totalMinutes = (startHour * 60) + startMinute + (entry.hours * 60);
-                const endHour = Math.floor(totalMinutes / 60);
-                const endMinute = Math.round(totalMinutes % 60);
-                entry.endTime = `${String(endHour % 24).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`;
-            }
-
-            saveDataForPeriod(currentPayPeriod);
-            displayOTEntries();
-            updateDashboard();
-        }
-
         function adjustHoursByDayType(dayType, adjustment) {
             const hourlyRate = getHourlyRate();
             if (!hourlyRate) return;
@@ -2412,55 +2647,6 @@
             updateDashboard();
         }
         
-        function saveOTEntry(id) {
-            const row = document.getElementById(`ot-row-${id}`);
-            const inputs = row.querySelectorAll('input, select');
-            const entryIndex = overtimeEntries.findIndex(e => e.id == id);
-            if (entryIndex === -1) return;
-
-            const date = inputs[0].value;
-            const startTime = inputs[1].value;
-            const endTime = inputs[2].value;
-            let hours = parseFloat(inputs[3].value);
-            const rate = parseFloat(inputs[4].value);
-            const remarks = inputs[5].value;
-
-            if (startTime && endTime) {
-                const start = new Date(`${date}T${startTime}`);
-                const end = new Date(`${date}T${endTime}`);
-                if (end < start) { end.setDate(end.getDate() + 1); }
-                const diffMs = end - start;
-                const rawHours = diffMs / (1000 * 60 * 60);
-                hours = Math.round(rawHours * 4) / 4;
-            }
-            
-            const limit = overtimeEntries[entryIndex].limit || 8;
-            if (hours > limit) {
-                alert(`An overtime entry cannot exceed the daily limit of ${limit} hours.`);
-                displayOTEntries();
-                return;
-            }
-
-            const hourlyRate = salaryData.basic / 26 / 8;
-
-            overtimeEntries[entryIndex] = {
-                ...overtimeEntries[entryIndex],
-                date: date, startTime: startTime, endTime: endTime,
-                hours: hours, rate: rate, remarks: remarks,
-                amount: hours * rate * hourlyRate
-            };
-            saveDataForPeriod(currentPayPeriod);
-            displayOTEntries();
-            updateDashboard();
-        }
-
-        function deleteOTEntry(id) {
-            overtimeEntries = overtimeEntries.filter(e => e.id != id);
-            saveDataForPeriod(currentPayPeriod);
-            displayOTEntries();
-            updateDashboard();
-        }
-
         function deleteAllOTEntries() {
             if (confirm("Are you sure you want to delete ALL overtime entries? This action cannot be undone.")) {
                 overtimeEntries = [];
@@ -2470,53 +2656,242 @@
                 showToast("All overtime entries have been deleted.");
             }
         }
+
+        // --- NEW SHUFFLE FUNCTION ---
+        function shuffleSchedule() {
+            if (overtimeEntries.length === 0) {
+                alert("There is no schedule to shuffle. Please generate one first.");
+                return;
+            }
+
+            if (!confirm("This will re-randomize the hours across the available days while keeping the total hours for each day type the same. Continue?")) {
+                return;
+            }
+
+            const hourlyRate = getHourlyRate();
+            if (hourlyRate <= 0) return;
+
+            const hoursToDistribute = { weekday: 0, saturday: 0, sunday: 0, publicHoliday: 0 };
+            overtimeEntries.forEach(entry => {
+                const dayType = getDayType(entry);
+                hoursToDistribute[dayType] += entry.hours;
+            });
+
+            const limits = readHourLimits();
+            const startDateStr = document.getElementById('otStartDate').value;
+            const endDateStr = document.getElementById('otEndDate').value;
+            let potentialDays = [];
+            let currentDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+
+            while (currentDate <= endDate) {
+                const dayType = getDayTypeFromDate(new Date(currentDate));
+                potentialDays.push({
+                    id: generateId(),
+                    date: new Date(currentDate).toISOString().split('T')[0],
+                    dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(currentDate).getDay()],
+                    rate: getRateForDayType(dayType),
+                    isWeekend: dayType === 'saturday' || dayType === 'sunday' || dayType === 'publicHoliday',
+                    hours: 0,
+                    amount: 0,
+                    remarks: document.getElementById('defaultProject').value || 'General OT',
+                    limit: limits[dayType],
+                    dayType: dayType
+                });
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+
+            let newEntries = [];
+
+            for (const dayType in hoursToDistribute) {
+                let totalHoursForType = hoursToDistribute[dayType];
+                if (totalHoursForType <= 0) continue;
+
+                let eligibleDaysForType = potentialDays.filter(d => d.dayType === dayType);
+                if (eligibleDaysForType.length === 0) continue;
+
+                eligibleDaysForType.forEach(entry => { entry.weight = Math.random(); });
+                const totalWeight = eligibleDaysForType.reduce((sum, e) => sum + e.weight, 0);
+
+                if (totalWeight > 0) {
+                    eligibleDaysForType.forEach(entry => {
+                        const idealHours = (entry.weight / totalWeight) * totalHoursForType;
+                        entry.hours = Math.min(entry.limit, Math.round(idealHours * 4) / 4);
+                    });
+                }
+
+                let currentTotalHours = eligibleDaysForType.reduce((sum, e) => sum + e.hours, 0);
+                let hourDifference = round2(totalHoursForType - currentTotalHours);
+                let safetyNet = 0;
+
+                while (Math.abs(hourDifference) > 0.01 && safetyNet < 1000) {
+                    const increment = 0.25 * Math.sign(hourDifference);
+
+                    if (increment > 0) {
+                        let eligibleToAdd = eligibleDaysForType.filter(e => e.hours < e.limit);
+                        if (eligibleToAdd.length === 0) break;
+                        eligibleToAdd[Math.floor(Math.random() * eligibleToAdd.length)].hours += increment;
+                    } else {
+                        let eligibleToRemove = eligibleDaysForType.filter(e => e.hours > 0);
+                        if (eligibleToRemove.length === 0) break;
+                        eligibleToRemove[Math.floor(Math.random() * eligibleToRemove.length)].hours += increment;
+                    }
+                    hourDifference = round2(hourDifference - increment);
+                    safetyNet++;
+                }
+                
+                newEntries.push(...eligibleDaysForType.filter(d => d.hours > 0));
+            }
+
+            newEntries.forEach(entry => {
+                entry.hours = round2(entry.hours);
+                entry.amount = entry.hours * hourlyRate * entry.rate;
+                entry.remarks += ' - ' + generateTaskDescription(new Date(entry.date));
+                
+                const startHourBase = entry.isWeekend ? 9 : 18;
+                const randomHourOffset = Math.floor(Math.random() * 3);
+                const randomMinute = Math.floor(Math.random() * 4) * 15;
+                
+                const startHour = startHourBase + randomHourOffset;
+                entry.startTime = `${String(startHour).padStart(2, '0')}:${String(randomMinute).padStart(2, '0')}`;
+                entry.endTime = addHoursToTime(entry.startTime, entry.hours);
+            });
+
+            overtimeEntries = newEntries;
+            saveDataForPeriod(currentPayPeriod);
+            displayOTEntries();
+            updateDashboard();
+            showToast('🔄 Schedule has been successfully shuffled!');
+        }
+
+
+        // --- OT MODAL LOGIC ---
+        function openOTEditModal(id) {
+            const entry = overtimeEntries.find(e => e.id === id);
+            if (!entry) return;
+
+            document.getElementById('otEditId').value = id;
+            otEditDatePicker.setDate(entry.date, false);
+            document.getElementById('otEditRate').value = entry.rate;
+            document.getElementById('otEditStartTime').value = entry.startTime || '';
+            document.getElementById('otEditEndTime').value = entry.endTime || '';
+            document.getElementById('otEditHours').value = entry.hours.toFixed(2);
+            document.getElementById('otEditRemarks').value = entry.remarks || '';
+            
+            document.getElementById('ot-edit-modal').style.display = 'flex';
+        }
+
+        function closeOTEditModal() {
+            document.getElementById('ot-edit-modal').style.display = 'none';
+        }
         
-        // --- NEW/MODIFIED EXPENSE FUNCTIONS (IMPROVED) ---
-        function getRatioFromProfile(profile){
-          if (profile==='equal50') return .5;
-          if (profile==='mine100') return 1;
-          if (profile==='partner100') return 0;
-          return null; // custom
+        function adjustModalHour(amount) {
+            const hoursInput = document.getElementById('otEditHours');
+            let currentHours = parseFloat(hoursInput.value) || 0;
+            currentHours += amount;
+            if (currentHours < 0) currentHours = 0;
+            hoursInput.value = currentHours.toFixed(2);
         }
 
+        function saveOTEntryFromModal() {
+            const id = document.getElementById('otEditId').value;
+            const entryIndex = overtimeEntries.findIndex(e => e.id === id);
+            if (entryIndex === -1) return;
+
+            const entry = overtimeEntries[entryIndex];
+            const hourlyRate = getHourlyRate();
+
+            entry.date = document.getElementById('otEditDate').value;
+            entry.rate = parseFloat(document.getElementById('otEditRate').value);
+            entry.startTime = document.getElementById('otEditStartTime').value;
+            entry.endTime = document.getElementById('otEditEndTime').value;
+            entry.hours = parseFloat(document.getElementById('otEditHours').value) || 0;
+            entry.remarks = document.getElementById('otEditRemarks').value;
+            
+            if (entry.startTime && entry.endTime) {
+                const start = new Date(`${entry.date}T${entry.startTime}`);
+                const end = new Date(`${entry.date}T${entry.endTime}`);
+                if (end < start) { end.setDate(end.getDate() + 1); }
+                const diffMs = end - start;
+                const rawHours = diffMs / (1000 * 60 * 60);
+                entry.hours = Math.round(rawHours * 4) / 4;
+            } else if (entry.startTime && entry.hours > 0) {
+                 entry.endTime = addHoursToTime(entry.startTime, entry.hours);
+            }
+
+            entry.amount = entry.hours * entry.rate * hourlyRate;
+            
+            saveDataForPeriod(currentPayPeriod);
+            displayOTEntries();
+            updateDashboard();
+            closeOTEditModal();
+            showToast('OT Entry Updated!');
+        }
+        
+        function deleteOTEntryFromModal() {
+            const id = document.getElementById('otEditId').value;
+            if (confirm('Are you sure you want to delete this entry?')) {
+                overtimeEntries = overtimeEntries.filter(e => e.id != id);
+                saveDataForPeriod(currentPayPeriod);
+                displayOTEntries();
+                updateDashboard();
+                closeOTEditModal();
+                showToast('OT Entry Deleted.');
+            }
+        }
+        
+        // --- EXPENSE FUNCTIONS ---
         function applySplitProfile() {
-          const full = parseFloat(document.getElementById('expenseFullAmount').value)||0;
-          const profile = document.getElementById('expenseSplitProfile').value;
-          const r = getRatioFromProfile(profile);
-          if (r==null) { validateExpenseForm(); return; }
-          const my = round2(full*r);
-          const her = round2(full-my);
-          document.getElementById('myShare').value = my;
-          document.getElementById('partnerShare').value = her;
-          validateExpenseForm();
+            const profile = document.getElementById('expenseSplitProfile').value;
+            const fullAmountEl = document.getElementById('expenseFullAmount');
+            const myShareEl = document.getElementById('myShare');
+            const partnerShareEl = document.getElementById('partnerShare');
+
+            if (profile === 'equal50') {
+                const myShare = parseFloat(myShareEl.value) || 0;
+                const partnerShare = parseFloat(partnerShareEl.value) || 0;
+                const total = myShare + partnerShare;
+                if (total > 0) {
+                    myShareEl.value = (total / 2).toFixed(2);
+                    partnerShareEl.value = (total / 2).toFixed(2);
+                }
+            } else if (profile === 'mine100') {
+                const myShare = parseFloat(myShareEl.value) || 0;
+                partnerShareEl.value = '';
+            } else if (profile === 'partner100') {
+                const partnerShare = parseFloat(partnerShareEl.value) || 0;
+                myShareEl.value = '';
+            }
+            updateShares();
         }
 
-        function updateShares(whoChanged){
-          const prof = document.getElementById('expenseSplitProfile');
-          const fullEl = document.getElementById('expenseFullAmount');
-          const mineEl = document.getElementById('myShare');
-          const herEl  = document.getElementById('partnerShare');
-          if (prof.value!=='custom') prof.value='custom';
+        function updateShares() {
+            const myShareEl = document.getElementById('myShare');
+            const partnerShareEl = document.getElementById('partnerShare');
+            const fullAmountEl = document.getElementById('expenseFullAmount');
+            const splitProfileEl = document.getElementById('expenseSplitProfile');
 
-          const full = parseFloat(fullEl.value)||0;
-          let my  = parseFloat(mineEl.value)||0;
-          let her = parseFloat(herEl.value)||0;
+            const myShare = parseFloat(myShareEl.value) || 0;
+            const partnerShare = parseFloat(partnerShareEl.value) || 0;
+            
+            fullAmountEl.value = (myShare + partnerShare).toFixed(2);
 
-          if (whoChanged==='mine') her = Math.max(0, round2(full - my));
-          else if (whoChanged==='partner') my = Math.max(0, round2(full - her));
-
-          mineEl.value = my; 
-          herEl.value = her; 
-          fullEl.value = round2(my+her);
-          validateExpenseForm();
+            if (myShare > 0 && partnerShare === 0) {
+                splitProfileEl.value = 'mine100';
+            } else if (myShare === 0 && partnerShare > 0) {
+                splitProfileEl.value = 'partner100';
+            } else if (myShare > 0 && myShare === partnerShare) {
+                splitProfileEl.value = 'equal50';
+            } else {
+                splitProfileEl.value = 'custom';
+            }
+            validateExpenseForm();
         }
 
         function validateExpenseForm() {
-            const full = +document.getElementById('expenseFullAmount').value || 0;
-            const my   = +document.getElementById('myShare').value || 0;
-            const her  = +document.getElementById('partnerShare').value || 0;
-            const ok = full >= 0 && my >= 0 && her >= 0 && Math.round((my + her - full)*100) === 0;
-            document.getElementById('addExpenseBtn').disabled = !ok;
+            const myShare = parseFloat(document.getElementById('myShare').value) || 0;
+            const partnerShare = parseFloat(document.getElementById('partnerShare').value) || 0;
+            document.getElementById('addExpenseBtn').disabled = (myShare + partnerShare) <= 0;
         }
 
         function addExpense() {
@@ -2529,7 +2904,7 @@
             const isRecurring = document.getElementById('isRecurringExpense').checked;
             const splitProfile = document.getElementById('expenseSplitProfile').value;
 
-            if (!date || !fullAmount) { alert('Please fill in a date and amount.'); return; }
+            if (!date || !fullAmount) { alert('Please fill in a date and at least one share amount.'); return; }
             
             const newExpense = { id: generateId(), date, category, myShare, partnerShare, description, fullAmount, isRecurring, splitProfile, isExcluded: false };
             expenses.push(newExpense);
@@ -2787,7 +3162,7 @@
                 return;
             }
             
-            const baseNetIncome = getProjectedNetIncome(0);
+            const baseNetIncome = getNetIncome(0, false); // **PATCH**: Include claims for projection
             const afterExpenses = baseNetIncome - expectedExpensesValue;
             const otRequired = Math.max(0, targetSavings + expectedExpensesValue - baseNetIncome);
             
@@ -2804,56 +3179,65 @@
             if (otRequired <= 0.01 && baseNetIncome > 0) {
                 alertDiv.className = 'alert alert-success';
                 alertDiv.innerHTML = '✅ Great! You can achieve your savings target next month without any overtime!';
+                document.getElementById('createOTPlanBtn').style.display = 'none';
             } else if (baseNetIncome > 0) {
                 alertDiv.className = 'alert alert-warning';
-                alertDiv.innerHTML = `⚠️ You need to work <strong>${hoursNeeded.toFixed(1)} hours</strong> of overtime <strong>this month</strong> to reach your target <strong>next month</strong>.`;
+                alertDiv.innerHTML = `⚠️ You need to work <strong>${hoursNeeded.toFixed(1)} hours</strong> of overtime <strong>this period</strong> to reach your target <strong>next month</strong>.`;
+                document.getElementById('createOTPlanBtn').style.display = 'inline-block';
             } else {
                  alertDiv.className = 'alert alert-info';
                  alertDiv.innerHTML = 'Enter your salary details to begin the analysis.';
+                 document.getElementById('createOTPlanBtn').style.display = 'none';
             }
 
-            const targetOTEarningsInput = document.getElementById('targetOTEarnings');
-            if (targetOTEarningsInput.value !== otRequired.toFixed(2)) {
-                targetOTEarningsInput.value = otRequired.toFixed(2);
-                handleRealtimeAllocation();
-            }
+            populateMiniSimulator();
+            runMiniSimulator();
         }
         
         function refreshSavingsHeader(){
             const target = +document.getElementById('targetSavings').value || 0;
             const ind = document.getElementById('savingsIndicator');
-            const indContainer = document.getElementById('savingsIndicatorContainer');
+            const topUpBtn = document.getElementById('topUpBtn');
             const actualVsTargetLabel = document.getElementById('actualVsTargetLabel');
             const savingsActualEl = document.getElementById('savingsActual');
 
             if (target === 0) {
-                indContainer.style.display = 'none';
+                ind.parentElement.style.display = 'none';
                 savingsActualEl.textContent = fmtRM(0);
-                actualVsTargetLabel.textContent = "Projected Savings vs Target";
+                actualVsTargetLabel.textContent = "Actual Savings vs Target";
                 return;
             }
             
-            const currentOT = overtimeEntries.reduce((sum, e) => sum + e.amount, 0);
-            const projectedNet = getProjectedNetIncome(currentOT);
-            const totalMyShare = expenses.filter(e => !e.isExcluded).reduce((sum, e) => sum + e.myShare, 0);
-            const projectedSavings = projectedNet - totalMyShare;
+            const prevPeriod = getPreviousMonthPeriod(currentPayPeriod);
+            const prevOTEntries = JSON.parse(localStorage.getItem(`overtimeEntries_${prevPeriod}`) || '[]');
+            const totalOT = prevOTEntries.reduce((sum, e) => sum + e.amount, 0);
             
-            savingsActualEl.textContent = fmtRM(projectedSavings);
-            actualVsTargetLabel.textContent = "Projected Savings vs Target";
+            // **PATCH**: Calculate net income for savings check INCLUDING claims
+            const netIncomeForSavings = getNetIncome(totalOT, false); 
+            const totalMyShare = expenses.filter(e => !e.isExcluded).reduce((sum, e) => sum + e.myShare, 0);
+            const actualSavings = netIncomeForSavings - totalMyShare;
+            
+            savingsActualEl.textContent = fmtRM(actualSavings);
+            savingsActualEl.dataset.value = actualSavings; 
+            actualVsTargetLabel.textContent = "Actual Savings vs Target";
 
-            indContainer.style.display = 'block';
-            if (projectedSavings >= target){
+            ind.parentElement.style.display = 'flex';
+            const shortfall = target - actualSavings;
+
+            if (shortfall <= 0){
                 ind.className='savings-indicator savings-good';
                 ind.textContent='On Track';
+                topUpBtn.style.display = 'none';
             } else {
-                const gap = (target - projectedSavings).toFixed(2);
                 ind.className='savings-indicator savings-warning';
-                ind.textContent=`Short by RM ${gap}`;
+                ind.textContent=`Short by ${fmtRM(shortfall)}`;
+                topUpBtn.style.display = 'inline-block';
             }
         }
 
-        function getProjectedNetIncome(otAmount) {
-            const gross = (salaryData.basic || 0) + (salaryData.claims || 0) + (salaryData.hpAllowance || 0) + (salaryData.incentive || 0) + (salaryData.bonus || 0) + (salaryData.otherIncome || 0) + otAmount;
+        function getNetIncome(otAmount, excludeClaims = false) {
+            const claims = excludeClaims ? 0 : (salaryData.claims || 0);
+            const gross = (salaryData.basic || 0) + claims + (salaryData.hpAllowance || 0) + (salaryData.incentive || 0) + (salaryData.bonus || 0) + (salaryData.otherIncome || 0) + otAmount;
             const deductionsObj = calculateDeductions(salaryData, otAmount);
             const totalDeductions = deductionsObj.epf + deductionsObj.socso + deductionsObj.eis + deductionsObj.pcb + (salaryData.cashAdvance || 0) + (salaryData.otherDeductions || 0);
             return gross - totalDeductions;
@@ -2869,7 +3253,7 @@
             const totalDeductions = (salaryData.epf || 0) + (salaryData.socso || 0) + (salaryData.eis || 0) + (salaryData.pcb || 0) + (salaryData.cashAdvance || 0) + (salaryData.otherDeductions || 0);
             const netIncome = grossIncome - totalDeductions;
             
-            const baseNetSalary = getProjectedNetIncome(0);
+            const baseNetSalary = getNetIncome(0, true); // Base net without claims or OT
             
             const currentMonthName = document.getElementById('currentMonth').value.split(' ')[0];
             document.getElementById('dashboardTitle').textContent = `Current Finances (${currentMonthName})`;
@@ -2887,9 +3271,15 @@
             const target = parseFloat(document.getElementById('targetSavings').value) || 0;
             document.getElementById('savingsTargetDisplay').textContent = fmtRM(target);
             
-            refreshSavingsHeader();
+            const projectedOT = overtimeEntries.reduce((sum, e) => sum + (e.amount || 0), 0);
+            document.getElementById('projectedNextMonthOT').textContent = fmtRM(projectedOT);
 
-            const liveActualSavings = netIncome - totalMyShare;
+            refreshSavingsHeader();
+            
+            // **PATCH**: Calculate savings INCLUDING claims
+            const netIncomeForSavings = getNetIncome(totalOT, false);
+            const liveActualSavings = netIncomeForSavings - totalMyShare;
+
             const progressPercent = target > 0 ? Math.min((liveActualSavings / target) * 100, 100) : 0;
             const progressBar = document.getElementById('savingsProgress');
             if (progressBar) {
@@ -2900,7 +3290,6 @@
             const monthSavedEl = document.getElementById('monthSaved');
             if (monthSavedEl) monthSavedEl.textContent = fmtRM(liveActualSavings);
             
-            // Update Sinking Funds Dashboard Card
             const totalSinkingFundSavings = sinkingFunds.reduce((sum, fund) => sum + fund.savedAmount, 0);
             document.getElementById('sinkingFundsTotal').textContent = fmtRM(totalSinkingFundSavings);
             
@@ -2933,7 +3322,7 @@
             const totalDeductions = (salaryData.epf || 0) + (salaryData.socso || 0) + (salaryData.eis || 0) + (salaryData.pcb || 0) + (salaryData.cashAdvance || 0) + (salaryData.otherDeductions || 0);
             const netIncome = grossIncome - totalDeductions;
             
-            const baseNetSalary = getProjectedNetIncome(0);
+            const baseNetSalary = getNetIncome(0, true);
             
             const includedExpenses = expenses.filter(e => !e.isExcluded);
             const totalMyShare = includedExpenses.reduce((sum, e) => sum + e.myShare, 0);
@@ -3025,7 +3414,7 @@
             const applyBtn = document.getElementById('applySavingsPlanBtn');
             const coachText = document.getElementById('aiCoachText');
 
-            suggestionsDiv.innerHTML = ''; // Clear previous suggestions
+            suggestionsDiv.innerHTML = ''; 
 
             const grossIncome = (salaryData.basic || 0) + (salaryData.claims || 0) + (salaryData.hpAllowance || 0) + (salaryData.incentive || 0) + (salaryData.bonus || 0) + (salaryData.otherIncome || 0);
             const totalDeductions = (salaryData.epf || 0) + (salaryData.socso || 0) + (salaryData.eis || 0) + (salaryData.pcb || 0) + (salaryData.cashAdvance || 0) + (salaryData.otherDeductions || 0);
@@ -3044,12 +3433,10 @@
             aiSavingsPlan = { total: 0, allocations: [] };
             let totalAllocated = 0;
 
-            // 1. Emergency Fund
             const emergencyGoal = savingsGoalsData.emergencyFundGoal || 0;
             const emergencyCurrent = savingsGoalsData.currentEmergencyFund || 0;
             if (emergencyCurrent < emergencyGoal) {
                 const emergencyNeeded = emergencyGoal - emergencyCurrent;
-                // Suggest allocating a significant portion, e.g., 50% of surplus, but not more than needed
                 let emergencyAllocation = Math.min(emergencyNeeded, surplus * 0.5);
                 emergencyAllocation = round2(emergencyAllocation);
                 
@@ -3060,7 +3447,6 @@
                 }
             }
 
-            // 2. Sinking Funds
             sinkingFunds.forEach(fund => {
                 const today = new Date();
                 const due = new Date(fund.dueDate);
@@ -3075,7 +3461,6 @@
                 }
             });
 
-            // 3. General Savings
             if (surplus > 0) {
                 aiSavingsPlan.allocations.push({ name: 'Flexible Savings', amount: surplus });
                 totalAllocated += surplus;
@@ -3083,7 +3468,6 @@
 
             aiSavingsPlan.total = round2(totalAllocated);
 
-            // Display suggestions
             aiSavingsPlan.allocations.forEach(alloc => {
                 const item = document.createElement('div');
                 item.className = 'suggestion-item';
@@ -3189,7 +3573,7 @@
             event.target.value = '';
         }
 
-        // --- RECURRING EXPENSES FUNCTIONS ---
+        // --- RECURRING & EXCLUDE EXPENSES ---
         function toggleRecurringStatus(expenseId, isChecked) {
             const expenseIndex = expenses.findIndex(e => e.id === expenseId);
             if (expenseIndex === -1) return;
@@ -3214,7 +3598,6 @@
             showToast(`Expense marked as ${isChecked ? 'recurring' : 'not recurring'}.`);
         }
         
-        // --- NEW: EXCLUDE EXPENSE FUNCTION ---
         function toggleExpenseExclusion(expenseId, isChecked) {
             const expenseIndex = expenses.findIndex(e => e.id === expenseId);
             if (expenseIndex === -1) return;
@@ -3222,7 +3605,6 @@
             expenses[expenseIndex].isExcluded = isChecked;
             saveDataForPeriod(currentPayPeriod);
             
-            // Refresh all relevant parts of the UI
             displayExpenses();
             updateDashboard();
             updateSummary();
@@ -3250,7 +3632,7 @@
                         id: generateId(),
                         date: firstDayOfMonth,
                         isRecurring: true,
-                        isExcluded: false // Default to not excluded
+                        isExcluded: false
                     });
                     addedCount++;
                 }
@@ -3266,7 +3648,7 @@
             }
         }
 
-        // --- COPY LAST MONTH FUNCTIONS ---
+        // --- COPY LAST MONTH ---
         function getPreviousMonthPeriod(period) {
             const [year, month] = period.split('-').map(Number);
             const date = new Date(year, month - 2, 1, 12, 0, 0); 
@@ -3341,7 +3723,7 @@
             return false;
         }
 
-        // --- SETTLE UP REPORT (IMPROVED) ---
+        // --- REPORTS & MODALS ---
         const DEFAULT_RATIO = 0.5;
         function generateSettleUpReport(){
           const includedExpenses = expenses.filter(e => !e.isExcluded);
@@ -3365,7 +3747,6 @@
             document.getElementById('settleup-modal').style.display = 'none';
         }
         
-        // --- NEW: PDF EXPORT ---
         function launchExportPDFModal() {
             const titleInput = document.getElementById('pdfReportTitle');
             const monthName = document.getElementById('currentMonth').value;
@@ -3390,11 +3771,10 @@
                 return;
             }
 
-            // --- 1. Create Summary UI for PDF ---
             const summaryContainer = document.createElement('div');
             summaryContainer.id = 'pdf-summary-container';
             summaryContainer.style.position = 'absolute';
-            summaryContainer.style.left = '-9999px'; // Position off-screen
+            summaryContainer.style.left = '-9999px';
             summaryContainer.style.padding = '20px';
             summaryContainer.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
             summaryContainer.style.width = '800px';
@@ -3423,22 +3803,18 @@
             `;
             document.body.appendChild(summaryContainer);
 
-            // --- 2. Render UI to Image ---
             const summaryCanvas = await html2canvas(summaryContainer);
             const summaryImage = summaryCanvas.toDataURL('image/png');
-            document.body.removeChild(summaryContainer); // Clean up
+            document.body.removeChild(summaryContainer);
 
-            // --- 3. Build PDF ---
             doc.setFontSize(18);
             doc.text(reportTitle, 14, 22);
             doc.setFontSize(11);
             doc.setTextColor(100);
             doc.text(`Report for period: ${currentPayPeriod}`, 14, 28);
 
-            // Add Summary Image
             doc.addImage(summaryImage, 'PNG', 14, 35, 180, 40);
 
-            // Add Table
             const tableBody = expensesToExport.map(exp => {
                 return [
                     exp.date,
@@ -3462,7 +3838,7 @@
             closeExportPDFModal();
         }
 
-        // --- SINKING FUNDS LOGIC ---
+        // --- SINKING FUNDS ---
         function addSinkingFund() {
             const name = document.getElementById('fundName').value;
             const totalAmount = parseFloat(document.getElementById('fundTotal').value);
@@ -3479,14 +3855,13 @@
                 totalAmount,
                 dueDate,
                 savedAmount: 0,
-                allocations: {} // To track monthly contributions
+                allocations: {}
             };
 
             sinkingFunds.push(newFund);
             saveDataForPeriod(currentPayPeriod);
             displaySinkingFunds();
             
-            // Reset form
             document.getElementById('fundName').value = '';
             document.getElementById('fundTotal').value = '';
             fundDueDatePicker.clear();
@@ -3550,12 +3925,10 @@
                 return;
             }
 
-            // Update fund
             fund.savedAmount = round2(fund.savedAmount + monthlyContribution);
             if (!fund.allocations) fund.allocations = {};
             fund.allocations[currentPayPeriod] = true;
 
-            // Create corresponding expense
             const expenseDate = `${currentPayPeriod}-01`;
             const newExpense = {
                 id: generateId(),
@@ -3568,7 +3941,7 @@
                 isRecurring: false,
                 splitProfile: 'mine100',
                 isExcluded: false,
-                isSinkingFund: true // Mark as a special expense
+                isSinkingFund: true
             };
             expenses.push(newExpense);
 
@@ -3585,6 +3958,176 @@
                 showToast("Goal deleted.");
             }
         }
+        
+        // --- WORKFLOW ENHANCEMENTS ---
+        function createOTPlan() {
+            const otRequiredText = document.getElementById('otRequired').textContent;
+            const otAmount = parseFloat(otRequiredText.replace(/[^0-9.-]+/g,""));
+
+            if (otAmount > 0) {
+                document.getElementById('tab-btn-overtime').click();
+                
+                const targetInput = document.getElementById('targetOTEarnings');
+                targetInput.value = otAmount.toFixed(2);
+                
+                handleRealtimeAllocation();
+                
+                showToast(`OT Target of ${fmtRM(otAmount)} set. Ready to generate schedule.`);
+            } else {
+                showToast('No overtime is required for this goal.', 'info');
+            }
+        }
+        
+        function launchTopUpModal() {
+            const targetSavings = parseFloat(document.getElementById('targetSavings').value) || 0;
+            const actualSavings = parseFloat(document.getElementById('savingsActual').dataset.value) || 0;
+            const shortfall = targetSavings - actualSavings;
+
+            if (shortfall <= 0) {
+                showToast('You are already on track to meet your savings goal!', 'info');
+                return;
+            }
+
+            document.getElementById('topUpModalText').innerHTML = `You have a savings shortfall of <strong>${fmtRM(shortfall)}</strong>.`;
+            document.getElementById('topup-modal').style.display = 'flex';
+        }
+
+        function closeTopUpModal() {
+            document.getElementById('topup-modal').style.display = 'none';
+        }
+
+        function topUpFromClaims() {
+            const targetSavings = parseFloat(document.getElementById('targetSavings').value) || 0;
+            const actualSavings = parseFloat(document.getElementById('savingsActual').dataset.value) || 0;
+            const shortfall = targetSavings - actualSavings;
+
+            if (shortfall > 0) {
+                const claimsInput = document.getElementById('claims');
+                const currentClaims = parseFloat(claimsInput.value) || 0;
+                
+                claimsInput.value = (currentClaims + shortfall).toFixed(2);
+                
+                document.getElementById('tab-btn-salary').click();
+                
+                autoCalculateDeductions();
+                
+                showToast(`${fmtRM(shortfall)} added to your claims to cover the savings shortfall.`);
+            } else {
+                showToast('You are already on track to meet your savings goal!', 'info');
+            }
+            closeTopUpModal();
+        }
+
+        function planOTForTarget() {
+            const targetSavings = parseFloat(document.getElementById('targetSavings').value) || 0;
+            const actualSavings = parseFloat(document.getElementById('savingsActual').dataset.value) || 0;
+            const shortfall = targetSavings - actualSavings;
+            
+            if (shortfall <= 0) {
+                showToast('You are already on track to meet your savings goal!', 'info');
+                closeTopUpModal();
+                return;
+            }
+            
+            const hourlyRate = getHourlyRate();
+            if(!hourlyRate) {
+                alert("Please set your basic salary first to calculate OT.");
+                closeTopUpModal();
+                return;
+            }
+
+            const otRequired = shortfall;
+            const hoursNeeded = otRequired / (hourlyRate * 1.5); // Assume average rate
+
+            if (confirm(`To cover the ${fmtRM(shortfall)} shortfall next month, you'll need to plan for approximately ${hoursNeeded.toFixed(1)} more hours of OT this period. Would you like to add this to your OT target?`)) {
+                 const targetInput = document.getElementById('targetOTEarnings');
+                const currentOTEarnings = parseFloat(targetInput.value) || 0;
+                const newTargetOTEarnings = currentOTEarnings + otRequired;
+
+                document.getElementById('tab-btn-overtime').click();
+                targetInput.value = newTargetOTEarnings.toFixed(2);
+                handleRealtimeAllocation();
+                showToast(`OT Target increased by ${fmtRM(otRequired)}.`);
+            }
+            closeTopUpModal();
+        }
+
+        function checkForRecurringPrompt() {
+            const lastSeenPeriod = localStorage.getItem('lastSeenPayPeriod');
+            if (currentPayPeriod !== lastSeenPeriod && recurringExpenses.length > 0) {
+                document.getElementById('recurringPromptText').textContent = `You have ${recurringExpenses.length} recurring expenses. Would you like to add them now?`;
+                document.getElementById('recurring-prompt-modal').style.display = 'flex';
+            }
+            localStorage.setItem('lastSeenPayPeriod', currentPayPeriod);
+        }
+
+        function closeRecurringPrompt() {
+            document.getElementById('recurring-prompt-modal').style.display = 'none';
+        }
+
+        function applyRecurringFromPrompt() {
+            applyRecurringExpenses();
+            closeRecurringPrompt();
+        }
+
+        function populateMiniSimulator() {
+            const miniSimSection = document.getElementById('miniSimulatorSection');
+            const categorySelect = document.getElementById('miniSimExpenseCategory');
+            
+            const categories = [...new Set(expenses.filter(e => !e.isExcluded && e.myShare > 0).map(e => e.category))];
+            
+            if (categories.length > 0) {
+                const currentSelection = categorySelect.value;
+                categorySelect.innerHTML = '';
+                
+                categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat;
+                    option.textContent = cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, ' ');
+                    categorySelect.appendChild(option);
+                });
+
+                if (categories.includes(currentSelection)) {
+                    categorySelect.value = currentSelection;
+                }
+
+                miniSimSection.style.display = 'block';
+            } else {
+                miniSimSection.style.display = 'none';
+            }
+        }
+
+        function runMiniSimulator() {
+            const resultDiv = document.getElementById('miniSimulatorResult');
+            const category = document.getElementById('miniSimExpenseCategory').value;
+            const reductionPct = parseFloat(document.getElementById('miniSimExpenseReduction').value) || 0;
+
+            if (!category || reductionPct <= 0) {
+                resultDiv.innerHTML = '';
+                return;
+            }
+
+            const useHousehold = document.getElementById('useHouseholdExpenses').checked;
+            const expenseKey = useHousehold ? 'fullAmount' : 'myShare';
+
+            const categoryTotal = expenses
+                .filter(e => !e.isExcluded && e.category === category)
+                .reduce((sum, e) => sum + (e[expenseKey] || 0), 0);
+
+            const reductionAmount = categoryTotal * (reductionPct / 100);
+
+            const baseNetIncome = getNetIncome(0, true);
+            const originalExpectedExpenses = getExpensesSum(useHousehold);
+            const targetSavings = parseFloat(document.getElementById('targetSavings').value) || 0;
+
+            const simulatedExpenses = originalExpectedExpenses - reductionAmount;
+            const newOtRequired = Math.max(0, targetSavings + simulatedExpenses - baseNetIncome);
+            
+            const hourlyRate = getHourlyRate();
+            const newHoursNeeded = hourlyRate > 0 ? newOtRequired / (hourlyRate * 1.5) : 0;
+
+            resultDiv.innerHTML = `By reducing spending by <strong>${fmtRM(reductionAmount)}</strong>, you will only need <strong>${fmtRM(newOtRequired)}</strong> of OT, which is about <strong>${newHoursNeeded.toFixed(1)} hours</strong>.`;
+        }
 
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -3599,15 +4142,15 @@
             });
 
             document.getElementById('useHouseholdExpenses').addEventListener('change', () => {
-                manualExpenseSet = false; // Allow auto-updates to take over again.
+                manualExpenseSet = false;
                 updateSavingsAnalysis();
             });
 
 
-            ['expenseFullAmount','myShare','partnerShare','expenseSplitProfile']
+            ['myShare','partnerShare','expenseSplitProfile']
               .forEach(id => {
                   const el = document.getElementById(id);
-                  if(el) el.addEventListener('input', validateExpenseForm)
+                  if(el) el.addEventListener('input', id === 'expenseSplitProfile' ? applySplitProfile : updateShares)
                 });
             
             initializePercentageInputs();
