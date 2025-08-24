@@ -830,8 +830,8 @@
         <div class="dashboard">
             <div class="card">
                 <h3 class="card-title" id="dashboardTitle">Current Month's Finances</h3>
+                <div class="stat-label">Total Income (incl. Claims)</div>
                 <div class="stat-value" id="totalIncome">RM 0.00</div>
-                <div class="stat-label" id="totalIncomeLabel">Total Income (incl. Claims)</div>
                  <div class="summary-item" style="padding: 10px; margin-top: 10px;">
                     <div class="stat-label" id="otPaidThisMonthLabel">OT Paid This Month</div>
                     <div style="font-size: 1.5em; font-weight: bold; color: #764ba2;" id="otPaidThisMonth">RM 0.00</div>
@@ -842,6 +842,7 @@
                         <div style="font-size: 1.8em; color: #333; font-weight: bold;" id="baseNetSalaryDashboard">RM 0.00</div>
                     </div>
                     <div>
+                        <div class="stat-label">Net Income (with OT)</div>
                         <div style="font-size: 1.8em; color: #4caf50; font-weight: bold;" id="netIncome">RM 0.00</div>
                     </div>
                 </div>
@@ -853,9 +854,9 @@
             
             <div class="card">
                 <h3 class="card-title">🎯 This Month's Savings Goal</h3>
-                <div class="stat-value" id="savingsTargetDisplay">RM 0.00</div>
                 <div class="stat-label">Target Savings</div>
-                <div class="summary-item" style="padding: 10px; margin-top: 10px;">
+                <div class="stat-value" id="savingsTargetDisplay">RM 0.00</div>
+                <div class="summary-item" style="padding: 10px; margin-top: 15px; text-align: center;">
                     <div class="stat-label">Projected OT Pay (Next Month)</div>
                     <div style="font-size: 1.8em; font-weight: bold; color: #764ba2;" id="projectedNextMonthOT">RM 0.00</div>
                 </div>
@@ -873,8 +874,8 @@
             
             <div class="card">
                 <h3 class="card-title">💰 Future Goals Savings</h3>
-                <div class="stat-value" id="sinkingFundsTotal">RM 0.00</div>
                 <div class="stat-label">Total Saved Across All Goals</div>
+                <div class="stat-value" id="sinkingFundsTotal">RM 0.00</div>
                 <div style="margin-top: 15px;">
                     <div class="stat-label">Next Goal Due</div>
                     <div style="font-size: 1.5em; font-weight: bold;" id="nextGoalDue">N/A</div>
@@ -1011,6 +1012,7 @@
                             <div style="font-size: 1.5em; font-weight: bold;" id="baseNetIncome">RM 0.00</div>
                         </div>
                         <div class="summary-item">
+                            <div class="stat-label">After Your Expenses</div>
                             <div style="font-size: 1.5em; font-weight: bold;" id="afterExpenses">RM 0.00</div>
                         </div>
                         <div class="summary-item">
@@ -3536,7 +3538,7 @@
             let totalAllocated = 0;
 
             const emergencyGoal = savingsGoalsData.emergencyFundGoal || 0;
-            const emergencyCurrent = savingsGoalsData.emergencyFundGoal || 0;
+            const emergencyCurrent = savingsGoalsData.currentEmergencyFund || 0;
             if (emergencyCurrent < emergencyGoal) {
                 const emergencyNeeded = emergencyGoal - emergencyCurrent;
                 let emergencyAllocation = Math.min(emergencyNeeded, surplus * 0.5);
