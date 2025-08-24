@@ -66,7 +66,18 @@
         .modal-content .btn-group .btn {
             width: 100%;
             margin: 0;
+            text-align: left;
+            padding: 15px;
+            display: flex;
+            align-items: center;
         }
+        .modal-content .btn-group .btn p {
+            font-size: 0.8em;
+            color: #eee;
+            margin: 4px 0 0 0;
+            font-weight: normal;
+        }
+
 
         .global-settings {
             display: grid;
@@ -637,7 +648,6 @@
             padding: 8px;
             margin: 5px 0;
             background: #f8f9fa;
-            border-radius: 5px;
             border-left: 4px solid #ffc107;
         }
         .suggestion-item strong {
@@ -794,7 +804,7 @@
             <div class="btn-group">
                 <button class="btn btn-warning" onclick="launchSimulator()">シ What-If Simulator</button>
                 <button class="btn btn-info" onclick="triggerImport()">📥 Import Data</button>
-                <button class="btn btn-secondary" onclick="exportData()">📤 Export Data</button>
+                <button class="btn btn-secondary" onclick="launchExportAsModal()">📤 Export As...</button>
             </div>
             <!-- GLOBAL SETTINGS -->
             <div class="global-settings">
@@ -832,7 +842,6 @@
                         <div style="font-size: 1.8em; color: #333; font-weight: bold;" id="baseNetSalaryDashboard">RM 0.00</div>
                     </div>
                     <div>
-                        <div class="stat-label">Net Income (with OT)</div>
                         <div style="font-size: 1.8em; color: #4caf50; font-weight: bold;" id="netIncome">RM 0.00</div>
                     </div>
                 </div>
@@ -846,7 +855,7 @@
                 <h3 class="card-title">🎯 This Month's Savings Goal</h3>
                 <div class="stat-value" id="savingsTargetDisplay">RM 0.00</div>
                 <div class="stat-label">Target Savings</div>
-                <div class="summary-item" style="padding: 10px; margin-top: 15px; text-align: center;">
+                <div class="summary-item" style="padding: 10px; margin-top: 10px;">
                     <div class="stat-label">Projected OT Pay (Next Month)</div>
                     <div style="font-size: 1.8em; font-weight: bold; color: #764ba2;" id="projectedNextMonthOT">RM 0.00</div>
                 </div>
@@ -1002,7 +1011,6 @@
                             <div style="font-size: 1.5em; font-weight: bold;" id="baseNetIncome">RM 0.00</div>
                         </div>
                         <div class="summary-item">
-                            <div class="stat-label">After Your Expenses</div>
                             <div style="font-size: 1.5em; font-weight: bold;" id="afterExpenses">RM 0.00</div>
                         </div>
                         <div class="summary-item">
@@ -1099,7 +1107,6 @@
                     <div>
                         <button class="btn btn-success" onclick="applyRecurringExpenses()">➕ Apply Recurring</button>
                         <button class="btn btn-info" onclick="copyLastMonthExpenses()">⎘ Copy Last Month's</button>
-                        <button class="btn" onclick="launchExportPDFModal()">📄 Export to PDF</button>
                     </div>
                 </div>
                 
@@ -1342,7 +1349,6 @@
                         <div style="font-size: 1.8em; font-weight: bold; color: #17a2b8;" id="summaryBaseNet">RM 0.00</div>
                     </div>
                      <div class="summary-item">
-                        <div class="stat-label">Net Income (with OT)</div>
                         <div style="font-size: 1.8em; font-weight: bold; color: #2196f3;" id="summaryNet">RM 0.00</div>
                     </div>
                     <div class="summary-item">
@@ -1370,7 +1376,6 @@
                         <div style="font-size: 1.2em; font-weight: bold;" id="incomeBasic">RM 0.00</div>
                     </div>
                     <div class="summary-item">
-                        <div class="stat-label">Overtime (from previous month)</div>
                         <div style="font-size: 1.2em; font-weight: bold;" id="incomeOT">RM 0.00</div>
                     </div>
                     <div class="summary-item">
@@ -1378,7 +1383,6 @@
                         <div style="font-size: 1.2em; font-weight: bold;" id="incomeAllowances">RM 0.00</div>
                     </div>
                     <div class="summary-item">
-                        <div class="stat-label">Others</div>
                         <div style="font-size: 1.2em; font-weight: bold;" id="incomeOthers">RM 0.00</div>
                     </div>
                 </div>
@@ -1434,24 +1438,122 @@
             <div id="settleup-content"></div>
         </div>
     </div>
-
-    <!-- Export PDF Modal -->
-    <div id="export-pdf-modal" class="modal-overlay">
+    
+    <!-- NEW: Detailed Report PDF Modal -->
+    <div id="detailed-pdf-modal" class="modal-overlay">
         <div class="modal-content">
-            <span class="modal-close" onclick="closeExportPDFModal()">&times;</span>
-            <h2>📄 Export Expenses to PDF</h2>
-            <p style="margin-bottom: 20px;">Customize and generate a PDF report of your expenses for this period.</p>
+            <span class="modal-close" onclick="closeDetailedPDFModal()">&times;</span>
+            <h2>✨ Export Detailed PDF Report</h2>
+            <p style="margin-bottom: 20px;">Customize and generate a comprehensive visual summary of your finances for this period.</p>
             <div class="form-group">
-                <label for="pdfReportTitle">Report Title</label>
-                <input type="text" id="pdfReportTitle" placeholder="e.g., Monthly Expense Report">
+                <label for="detailedReportTitle">Report Title</label>
+                <input type="text" id="detailedReportTitle" placeholder="e.g., Monthly Financial Summary">
             </div>
-            <div class="form-group checkbox-group" style="justify-content: center; margin-bottom: 25px;">
-                 <label for="pdfIncludeExcluded">Include excluded/hidden items?</label>
-                <input type="checkbox" id="pdfIncludeExcluded" style="width: 20px; height: 20px;">
+             <div class="form-group">
+                <label for="detailedThemeColor">Theme Color</label>
+                <input type="color" id="detailedThemeColor" value="#667eea" style="padding: 5px; height: 50px;">
             </div>
-            <button class="btn btn-success" style="width: 100%;" onclick="exportExpensesToPDF()">Download PDF</button>
+            <div class="form-group">
+                <label for="includeExcludedExpenses">Include Excluded Expenses in Report?</label>
+                <input type="checkbox" id="includeExcludedExpenses" style="width: 20px; height: 20px;">
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="exportDetailedPDF()">Download Detailed Report</button>
         </div>
     </div>
+
+    <!-- NEW: Expenses Only PDF Modal -->
+    <div id="expenses-only-pdf-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeExpensesOnlyPDFModal()">&times;</span>
+            <h2>📝 Export Expenses Only Report</h2>
+            <p style="margin-bottom: 20px;">Generate a PDF report showing only your expenses.</p>
+            <div class="form-group">
+                <label for="expensesOnlyReportTitle">Report Title</label>
+                <input type="text" id="expensesOnlyReportTitle" placeholder="e.g., Monthly Expenses Summary">
+            </div>
+             <div class="form-group">
+                <label for="expensesOnlyThemeColor">Theme Color</label>
+                <input type="color" id="expensesOnlyThemeColor" value="#dc3545" style="padding: 5px; height: 50px;">
+            </div>
+            <div class="form-group">
+                <label for="expensesOnlyIncludeExcludedExpenses">Include Excluded Expenses in Report?</label>
+                <input type="checkbox" id="expensesOnlyIncludeExcludedExpenses" style="width: 20px; height: 20px;">
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="exportExpensesOnlyPDF()">Download Expenses Only Report</button>
+        </div>
+    </div>
+
+    <!-- NEW: OT Only PDF Modal -->
+    <div id="ot-only-pdf-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeOTOnlyPDFModal()">&times;</span>
+            <h2>⏰ Export Overtime Only Report</h2>
+            <p style="margin-bottom: 20px;">Generate a PDF report showing only your overtime entries.</p>
+            <div class="form-group">
+                <label for="otOnlyReportTitle">Report Title</label>
+                <input type="text" id="otOnlyReportTitle" placeholder="e.g., Monthly Overtime Summary">
+            </div>
+             <div class="form-group">
+                <label for="otOnlyThemeColor">Theme Color</label>
+                <input type="color" id="otOnlyThemeColor" value="#667eea" style="padding: 5px; height: 50px;">
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="exportOTOnlyPDF()">Download Overtime Only Report</button>
+        </div>
+    </div>
+    
+    <!-- NEW: Export As Modal -->
+    <div id="export-as-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeExportAsModal()">&times;</span>
+            <h2>📤 Export Data As...</h2>
+            <p style="margin-bottom: 20px;">Choose a format and data set to export.</p>
+            <div class="btn-group" style="margin-top: 20px;">
+                 <button class="btn btn-info" onclick="exportData()">
+                    <span style="font-size: 1.2em; margin-right: 12px;">💾</span>
+                    <div>
+                        Full Backup (.json)
+                        <p>Saves all your data for re-importing later.</p>
+                    </div>
+                 </button>
+                 <button class="btn btn-success" onclick="exportExpensesCSV()">
+                    <span style="font-size: 1.2em; margin-right: 12px;">📝</span>
+                    <div>
+                        Expenses (.csv)
+                        <p>A detailed list of your expenses.</p>
+                    </div>
+                 </button>
+                 <button class="btn btn-success" onclick="exportOvertimeCSV()">
+                    <span style="font-size: 1.2em; margin-right: 12px;">⏰</span>
+                    <div>
+                        Overtime (.csv)
+                        <p>A detailed list of your OT entries.</p>
+                    </div>
+                 </button>
+                 <button class="btn" onclick="launchDetailedPDFModal()">
+                    <span style="font-size: 1.2em; margin-right: 12px;">✨</span>
+                    <div>
+                        Full Financial Report (.pdf)
+                        <p>A beautiful multi-page summary with all details.</p>
+                    </div>
+                 </button>
+                 <button class="btn btn-danger" onclick="launchExpensesOnlyPDFModal()">
+                    <span style="font-size: 1.2em; margin-right: 12px;">📝</span>
+                    <div>
+                        Expenses Only (.pdf)
+                        <p>A report solely for your expenses.</p>
+                    </div>
+                 </button>
+                 <button class="btn btn-primary" onclick="launchOTOnlyPDFModal()">
+                    <span style="font-size: 1.2em; margin-right: 12px;">⏰</span>
+                    <div>
+                        Overtime Only (.pdf)
+                        <p>A report solely for your overtime entries.</p>
+                    </div>
+                 </button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- NEW: Recurring Expenses Prompt Modal -->
     <div id="recurring-prompt-modal" class="modal-overlay">
@@ -3434,7 +3536,7 @@
             let totalAllocated = 0;
 
             const emergencyGoal = savingsGoalsData.emergencyFundGoal || 0;
-            const emergencyCurrent = savingsGoalsData.currentEmergencyFund || 0;
+            const emergencyCurrent = savingsGoalsData.emergencyFundGoal || 0;
             if (emergencyCurrent < emergencyGoal) {
                 const emergencyNeeded = emergencyGoal - emergencyCurrent;
                 let emergencyAllocation = Math.min(emergencyNeeded, surplus * 0.5);
@@ -3511,6 +3613,7 @@
         }
         
         function exportData() {
+            closeExportAsModal();
             const dataToExport = {};
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
@@ -3724,6 +3827,70 @@
         }
 
         // --- REPORTS & MODALS ---
+        function launchExportAsModal() {
+            document.getElementById('export-as-modal').style.display = 'flex';
+        }
+
+        function closeExportAsModal() {
+            document.getElementById('export-as-modal').style.display = 'none';
+        }
+
+        function exportToCSV(data, filename, headers) {
+            if (data.length === 0) {
+                alert('No data to export.');
+                return;
+            }
+            
+            const csvHeaders = headers || Object.keys(data[0]);
+            
+            let csvContent = "data:text/csv;charset=utf-8," + csvHeaders.join(",") + "\n";
+
+            const rows = data.map(row => {
+                return csvHeaders.map(header => {
+                    let cell = row[header] === null || row[header] === undefined ? '' : row[header];
+                    if (typeof cell === 'string' && cell.includes(',')) {
+                        cell = `"${cell.replace(/"/g, '""')}"`;
+                    }
+                    return cell;
+                }).join(",");
+            });
+            
+            csvContent += rows.join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast(`${filename} exported successfully!`);
+        }
+
+        function exportExpensesCSV() {
+            const filename = `expenses_${currentPayPeriod}.csv`;
+            const headers = ['date', 'category', 'description', 'myShare', 'partnerShare', 'fullAmount', 'splitProfile', 'isRecurring', 'isExcluded'];
+            exportToCSV(expenses, filename, headers);
+            closeExportAsModal();
+        }
+
+        function exportOvertimeCSV() {
+            const filename = `overtime_${currentPayPeriod}.csv`;
+            const dataToExport = overtimeEntries.map(e => ({
+                Date: e.date,
+                Day: e.dayName,
+                StartTime: e.startTime || '',
+                EndTime: e.endTime || '',
+                Hours: e.hours,
+                Rate: e.rate,
+                Earnings: e.amount,
+                Remarks: e.remarks || ''
+            }));
+            exportToCSV(dataToExport, filename);
+            closeExportAsModal();
+        }
+
         const DEFAULT_RATIO = 0.5;
         function generateSettleUpReport(){
           const includedExpenses = expenses.filter(e => !e.isExcluded);
@@ -3747,96 +3914,443 @@
             document.getElementById('settleup-modal').style.display = 'none';
         }
         
-        function launchExportPDFModal() {
-            const titleInput = document.getElementById('pdfReportTitle');
-            const monthName = document.getElementById('currentMonth').value;
-            titleInput.value = `${monthName} Expense Report`;
-            document.getElementById('export-pdf-modal').style.display = 'flex';
-        }
-
-        function closeExportPDFModal() {
-            document.getElementById('export-pdf-modal').style.display = 'none';
-        }
-
-        async function exportExpensesToPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            const includeExcluded = document.getElementById('pdfIncludeExcluded').checked;
-            const reportTitle = document.getElementById('pdfReportTitle').value || 'Expense Report';
-            const expensesToExport = includeExcluded ? expenses : expenses.filter(e => !e.isExcluded);
-
-            if (expensesToExport.length === 0) {
-                alert('No expenses to export for the selected criteria.');
-                return;
-            }
-
-            const summaryContainer = document.createElement('div');
-            summaryContainer.id = 'pdf-summary-container';
-            summaryContainer.style.position = 'absolute';
-            summaryContainer.style.left = '-9999px';
-            summaryContainer.style.padding = '20px';
-            summaryContainer.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
-            summaryContainer.style.width = '800px';
-            summaryContainer.style.background = 'white';
-
-            const summaryExpenses = expenses.filter(e => !e.isExcluded);
-            const totalMyShare = summaryExpenses.reduce((sum, exp) => sum + exp.myShare, 0);
-            const totalPartnerShare = summaryExpenses.reduce((sum, exp) => sum + (exp.partnerShare || 0), 0);
-            const totalFullAmount = summaryExpenses.reduce((sum, exp) => sum + (exp.fullAmount || 0), 0);
-
-            summaryContainer.innerHTML = `
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
-                    <div style="border: 1px solid #eee; border-radius: 10px; padding: 15px; text-align: center; background: #f8f9fa;">
-                        <div style="font-size: 12px; color: #666;">My Share</div>
-                        <div style="font-size: 24px; font-weight: bold; color: #667eea; margin-top: 5px;">${fmtRM(totalMyShare)}</div>
+        // Helper function to create a summary card HTML string
+        async function createSummaryCardImage(title, items, themeColor, pdf) {
+            let itemHTML = '';
+            items.forEach(item => {
+                const valueColor = item.valueColor || '#333'; // Default to dark grey
+                itemHTML += `
+                    <div style="flex: 1; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: ${valueColor}; margin-bottom: 5px;">${item.value}</div>
+                        <div style="font-size: 12px; color: #666;">${item.label}</div>
                     </div>
-                    <div style="border: 1px solid #eee; border-radius: 10px; padding: 15px; text-align: center; background: #f8f9fa;">
-                        <div style="font-size: 12px; color: #666;">Partner's Share</div>
-                        <div style="font-size: 24px; font-weight: bold; color: #764ba2; margin-top: 5px;">${fmtRM(totalPartnerShare)}</div>
-                    </div>
-                    <div style="border: 1px solid #eee; border-radius: 10px; padding: 15px; text-align: center; background: #f8f9fa;">
-                        <div style="font-size: 12px; color: #666;">Total Household</div>
-                        <div style="font-size: 24px; font-weight: bold; color: #333; margin-top: 5px;">${fmtRM(totalFullAmount)}</div>
+                `;
+            });
+
+            const cardHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 15px;
+                    padding: 20px;
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                    margin-bottom: 20px;
+                    text-align: center;
+                    width: 720px; /* Fixed width for rendering */
+                ">
+                    <h3 style="font-size: 18px; color: ${themeColor}; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">${title}</h3>
+                    <div style="display: flex; justify-content: space-around; gap: 10px;">
+                        ${itemHTML}
                     </div>
                 </div>
             `;
-            document.body.appendChild(summaryContainer);
 
-            const summaryCanvas = await html2canvas(summaryContainer);
-            const summaryImage = summaryCanvas.toDataURL('image/png');
-            document.body.removeChild(summaryContainer);
+            const tempDiv = document.createElement('div');
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.left = '-9999px';
+            tempDiv.innerHTML = cardHTML;
+            document.body.appendChild(tempDiv);
 
-            doc.setFontSize(18);
-            doc.text(reportTitle, 14, 22);
-            doc.setFontSize(11);
-            doc.setTextColor(100);
-            doc.text(`Report for period: ${currentPayPeriod}`, 14, 28);
+            const canvas = await html2canvas(tempDiv, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            document.body.removeChild(tempDiv);
 
-            doc.addImage(summaryImage, 'PNG', 14, 35, 180, 40);
-
-            const tableBody = expensesToExport.map(exp => {
-                return [
-                    exp.date,
-                    exp.category.replace(/_/g, ' '),
-                    exp.description,
-                    exp.myShare.toFixed(2),
-                    (exp.partnerShare || 0).toFixed(2),
-                    (exp.fullAmount || 0).toFixed(2)
-                ];
-            });
-
-            doc.autoTable({
-                head: [['Date', 'Category', 'Description', 'My Share', "Partner's Share", 'Full Amount']],
-                body: tableBody,
-                startY: 85,
-                theme: 'grid',
-                headStyles: { fillColor: [102, 126, 234] }
-            });
-
-            doc.save(`${reportTitle.replace(/ /g, '_')}.pdf`);
-            closeExportPDFModal();
+            const imgWidth = pdf.internal.pageSize.getWidth() - 80; // Match PDF width minus margins
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            return { imgData, imgWidth, imgHeight };
         }
+        
+        // --- NEW DETAILED PDF FUNCTIONS ---
+        function launchDetailedPDFModal() {
+            closeExportAsModal();
+            const titleInput = document.getElementById('detailedReportTitle');
+            const monthName = document.getElementById('currentMonth').value;
+            titleInput.value = `${monthName} Financial Report`;
+            document.getElementById('detailed-pdf-modal').style.display = 'flex';
+        }
+
+        function closeDetailedPDFModal() {
+            document.getElementById('detailed-pdf-modal').style.display = 'none';
+        }
+
+        async function exportDetailedPDF() {
+            const reportTitle = document.getElementById('detailedReportTitle').value || 'Financial Report';
+            const themeColor = document.getElementById('detailedThemeColor').value || '#667eea';
+            const includeExcluded = document.getElementById('includeExcludedExpenses').checked;
+
+            // 1. Gather Data
+            const prevPeriod = getPreviousMonthPeriod(currentPayPeriod);
+            const prevOTEntries = JSON.parse(localStorage.getItem(`overtimeEntries_${prevPeriod}`) || '[]');
+            const totalOT = prevOTEntries.reduce((sum, e) => sum + e.amount, 0);
+
+            const grossIncome = (salaryData.basic || 0) + (salaryData.claims || 0) + (salaryData.hpAllowance || 0) + (salaryData.incentive || 0) + (salaryData.bonus || 0) + (salaryData.otherIncome || 0) + totalOT;
+            const totalDeductions = (salaryData.epf || 0) + (salaryData.socso || 0) + (salaryData.eis || 0) + (salaryData.pcb || 0) + (salaryData.cashAdvance || 0) + (salaryData.otherDeductions || 0);
+            const netIncome = grossIncome - totalDeductions;
+            
+            const expensesForReport = includeExcluded ? expenses : expenses.filter(e => !e.isExcluded);
+            
+            const totalMyShare = expensesForReport.reduce((sum, e) => sum + e.myShare, 0);
+            const totalPartnerShare = expensesForReport.reduce((sum, e) => sum + (e.partnerShare || 0), 0);
+            const totalFullAmount = expensesForReport.reduce((sum, e) => sum + (e.fullAmount || 0), 0);
+
+            const netAfterExpenses = netIncome - totalMyShare;
+            const savingsRate = netIncome > 0 ? (netAfterExpenses / netIncome * 100) : 0;
+            
+            const projectedOT = overtimeEntries.reduce((sum, e) => sum + (e.amount || 0), 0);
+            const projectedHours = overtimeEntries.reduce((sum, e) => sum + (e.hours || 0), 0);
+
+            const topCategories = {};
+            expensesForReport.forEach(exp => {
+                topCategories[exp.category] = (topCategories[exp.category] || 0) + exp.myShare;
+            });
+            const top5Categories = Object.entries(topCategories)
+                .sort(([,a],[,b]) => b-a)
+                .slice(0, 5)
+                .map(([name, amount]) => `<li>${name.replace(/_/g, ' ')}: <strong>${fmtRM(amount)}</strong></li>`)
+                .join('');
+                
+            // 2. Create Hidden Div for Rendering
+            const infographicContainer = document.createElement('div');
+            infographicContainer.id = 'pdf-infographic-container';
+            infographicContainer.style.cssText = `
+                position: absolute; left: -9999px; width: 800px; padding: 40px;
+                background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif;
+                color: #333;
+            `;
+
+            // 3. Build HTML Content for Infographic
+            infographicContainer.innerHTML = `
+                <style>
+                    #pdf-infographic-container h1, #pdf-infographic-container h2, #pdf-infographic-container h3 { margin: 0; padding: 0; }
+                    #pdf-infographic-container .inf-header { text-align: center; margin-bottom: 30px; }
+                    #pdf-infographic-container .inf-header h1 { font-size: 32px; color: ${themeColor}; }
+                    #pdf-infographic-container .inf-header p { font-size: 18px; color: #666; }
+                    #pdf-infographic-container .inf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+                    #pdf-infographic-container .inf-card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+                    #pdf-infographic-container .inf-card.full { grid-column: 1 / -1; }
+                    #pdf-infographic-container .inf-card h3 { font-size: 16px; color: #888; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+                    #pdf-infographic-container .inf-card ul { list-style: none; padding: 0; margin: 0; }
+                    #pdf-infographic-container .inf-card li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
+                    #pdf-infographic-container .inf-card li:last-child { border-bottom: none; }
+                    #pdf-infographic-container .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center; }
+                    #pdf-infographic-container .kpi-item .value { font-size: 36px; font-weight: bold; color: ${themeColor}; }
+                    #pdf-infographic-container .kpi-item .label { font-size: 14px; color: #666; }
+                </style>
+                <div class="inf-header">
+                    <h1>${reportTitle}</h1>
+                    <p>Financial Summary for ${document.getElementById('currentMonth').value}</p>
+                </div>
+                <div class="inf-card full kpi-grid">
+                    <div class="kpi-item">
+                        <div class="value" style="color: #28a745;">${fmtRM(netIncome)}</div>
+                        <div class="label">💰 Net Income</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="value" style="color: #dc3545;">${fmtRM(totalMyShare)}</div>
+                        <div class="label">🛒 Total Expenses</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="value" style="color: #20c997;">${fmtRM(netAfterExpenses)}</div>
+                        <div class="label">🏦 Net Savings</div>
+                    </div>
+                </div>
+                <div class="inf-grid" style="margin-top: 20px;">
+                    <div class="inf-card">
+                        <h3>Income Breakdown</h3>
+                        <ul>
+                            <li><span>Basic Salary</span> <strong>${fmtRM(salaryData.basic || 0)}</strong></li>
+                            <li><span>Allowances & Incentives</span> <strong>${fmtRM((salaryData.hpAllowance || 0) + (salaryData.incentive || 0))}</strong></li>
+                            <li><span>Claims, Bonus, Other</span> <strong>${fmtRM((salaryData.claims || 0) + (salaryData.bonus || 0) + (salaryData.otherIncome || 0))}</strong></li>
+                            <li><span>Overtime Paid</span> <strong>${fmtRM(totalOT)}</strong></li>
+                            <li style="background: #f0f8ff;"><span>Gross Income</span> <strong>${fmtRM(grossIncome)}</strong></li>
+                        </ul>
+                    </div>
+                    <div class="inf-card">
+                        <h3>Deductions</h3>
+                        <ul>
+                            <li><span>EPF, SOCSO, EIS</span> <strong>${fmtRM((salaryData.epf || 0) + (salaryData.socso || 0) + (salaryData.eis || 0))}</strong></li>
+                            <li><span>PCB (Tax)</span> <strong>${fmtRM(salaryData.pcb || 0)}</strong></li>
+                            <li><span>Other Deductions</span> <strong>${fmtRM((salaryData.cashAdvance || 0) + (salaryData.otherDeductions || 0))}</strong></li>
+                            <li style="background: #fff0f5;"><span>Total Deductions</span> <strong>${fmtRM(totalDeductions)}</strong></li>
+                        </ul>
+                    </div>
+                    <div class="inf-card">
+                        <h3>Top 5 Spending Categories</h3>
+                        <ul>${top5Categories || '<li>No expenses recorded.</li>'}</ul>
+                    </div>
+                    <div class="inf-card">
+                        <h3>Key Metrics</h3>
+                        <ul>
+                            <li><span>Savings Rate</span> <strong>${savingsRate.toFixed(1)}%</strong></li>
+                            <li><span>Projected OT (Next Month)</span> <strong>${fmtRM(projectedOT)}</strong></li>
+                            <li><span>Projected OT Hours</span> <strong>${projectedHours.toFixed(2)} hrs</strong></li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(infographicContainer);
+
+            // 4. Use html2canvas to render the infographic
+            const canvas = await html2canvas(infographicContainer, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            document.body.removeChild(infographicContainer);
+
+            // 5. Initialize jsPDF and add the infographic
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'pt', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = pdfWidth;
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+            // 6. Add Overtime Details Table - Sorted by Date
+            if (overtimeEntries.length > 0) {
+                pdf.addPage();
+                pdf.setFontSize(18);
+                pdf.setTextColor(themeColor);
+                pdf.text('Overtime Entry Details', 40, 60);
+
+                // OT Summary Card Data
+                const totalOTHours = overtimeEntries.reduce((sum, e) => sum + e.hours, 0);
+                const totalOTEarnings = overtimeEntries.reduce((sum, e) => sum + e.amount, 0);
+                const averageHourlyRate = totalOTHours > 0 ? totalOTEarnings / totalOTHours : 0;
+
+                const otSummaryItems = [
+                    { value: totalOTHours.toFixed(2) + 'h', label: 'Total Hours', valueColor: '#28a745' },
+                    { value: fmtRM(totalOTEarnings), label: 'Total Earnings', valueColor: '#28a745' },
+                    { value: fmtRM(averageHourlyRate), label: 'Avg. Hourly Rate', valueColor: '#17a2b8' }
+                ];
+                const otSummaryCard = await createSummaryCardImage('Overtime Summary', otSummaryItems, themeColor, pdf);
+                pdf.addImage(otSummaryCard.imgData, 'PNG', 40, 80, otSummaryCard.imgWidth, otSummaryCard.imgHeight);
+                
+                const sortedOTEntries = [...overtimeEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const otBody = sortedOTEntries.map(e => [
+                    e.date,
+                    e.dayName,
+                    `${e.startTime || ''} - ${e.endTime || ''}`, // Include start and end time
+                    e.hours.toFixed(2),
+                    `${e.rate}x`,
+                    fmtRM(e.amount),
+                    e.remarks || ''
+                ]);
+
+                pdf.autoTable({
+                    head: [['Date', 'Day', 'Time', 'Hours', 'Rate', 'Earnings', 'Remarks']], // Updated head
+                    body: otBody,
+                    startY: otSummaryCard.imgHeight + 90, // Adjust startY after summary card
+                    headStyles: { fillColor: themeColor }
+                });
+            }
+
+            // 7. Add Expenses Details Table - Sorted by current view and with option to exclude
+            if (expensesForReport.length > 0) {
+                pdf.addPage();
+                pdf.setFontSize(18);
+                pdf.setTextColor(themeColor);
+                pdf.text('Expense Details', 40, 60);
+
+                // Expense Summary Card Data
+                const expenseSummaryItems = [
+                    { value: fmtRM(totalMyShare), label: 'Your Share', valueColor: '#dc3545' },
+                    { value: fmtRM(totalPartnerShare), label: 'Partner\'s Share', valueColor: '#6c757d' },
+                    { value: fmtRM(totalFullAmount), label: 'Household Total', valueColor: '#dc3545' }
+                ];
+                const expenseSummaryCard = await createSummaryCardImage('Expense Summary', expenseSummaryItems, themeColor, pdf);
+                pdf.addImage(expenseSummaryCard.imgData, 'PNG', 40, 80, expenseSummaryCard.imgWidth, expenseSummaryCard.imgHeight);
+
+                const expensesForTable = [...expensesForReport].sort((a, b) => {
+                    const valA = summaryView === 'my' ? a.myShare : a.fullAmount;
+                    const valB = summaryView === 'my' ? b.myShare : b.fullAmount;
+                    return valB - valA; // Sort descending by amount
+                });
+
+                const expenseBody = expensesForTable.map(e => [
+                    e.date,
+                    e.category.replace(/_/g, ' '),
+                    e.description || '',
+                    fmtRM(e.myShare),
+                    fmtRM(e.partnerShare || 0),
+                    fmtRM(e.fullAmount)
+                ]);
+
+                pdf.autoTable({
+                    head: [['Date', 'Category', 'Description', 'My Share', 'Partner\'s Share', 'Full Amount']],
+                    body: expenseBody,
+                    startY: expenseSummaryCard.imgHeight + 90, // Adjust startY after summary card
+                    headStyles: { fillColor: themeColor }
+                });
+            }
+            
+            // 8. Trigger Download
+            pdf.save(`${reportTitle.replace(/ /g, '_')}.pdf`);
+            closeDetailedPDFModal();
+        }
+
+        // --- NEW: Expenses Only PDF Functions ---
+        function launchExpensesOnlyPDFModal() {
+            closeExportAsModal();
+            const titleInput = document.getElementById('expensesOnlyReportTitle');
+            const monthName = document.getElementById('currentMonth').value;
+            titleInput.value = `${monthName} Expenses Summary`;
+            document.getElementById('expenses-only-pdf-modal').style.display = 'flex';
+        }
+
+        function closeExpensesOnlyPDFModal() {
+            document.getElementById('expenses-only-pdf-modal').style.display = 'none';
+        }
+
+        async function exportExpensesOnlyPDF() {
+            const reportTitle = document.getElementById('expensesOnlyReportTitle').value || 'Expenses Only Report';
+            const themeColor = document.getElementById('expensesOnlyThemeColor').value || '#dc3545';
+            const includeExcluded = document.getElementById('expensesOnlyIncludeExcludedExpenses').checked;
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'pt', 'a4');
+
+            pdf.setFontSize(22);
+            pdf.setTextColor(themeColor);
+            pdf.text(reportTitle, 40, 40);
+            pdf.setFontSize(12);
+            pdf.setTextColor(90);
+            pdf.text(`For: ${document.getElementById('currentMonth').value}`, 40, 60);
+
+            let currentY = 80;
+
+            const expensesForReport = includeExcluded ? expenses : expenses.filter(e => !e.isExcluded);
+
+            if (expensesForReport.length > 0) {
+                pdf.setFontSize(18);
+                pdf.setTextColor(themeColor);
+                pdf.text('Expenses Tracker', 40, currentY);
+                currentY += 20;
+
+                // Expense Summary Card Data
+                const totalMyShare = expensesForReport.reduce((sum, e) => sum + e.myShare, 0);
+                const totalPartnerShare = expensesForReport.reduce((sum, e) => sum + (e.partnerShare || 0), 0);
+                const totalFullAmount = expensesForReport.reduce((sum, e) => sum + (e.fullAmount || 0), 0);
+                
+                const expenseSummaryItems = [
+                    { value: fmtRM(totalMyShare), label: 'Your Share', valueColor: '#dc3545' },
+                    { value: fmtRM(totalPartnerShare), label: 'Partner\'s Share', valueColor: '#6c757d' },
+                    { value: fmtRM(totalFullAmount), label: 'Household Total', valueColor: '#dc3545' }
+                ];
+                const expenseSummaryCard = await createSummaryCardImage('Expense Summary', expenseSummaryItems, themeColor, pdf);
+                pdf.addImage(expenseSummaryCard.imgData, 'PNG', 40, currentY, expenseSummaryCard.imgWidth, expenseSummaryCard.imgHeight);
+                currentY += expenseSummaryCard.imgHeight + 10;
+
+
+                const expensesForTable = [...expensesForReport].sort((a, b) => {
+                    const valA = summaryView === 'my' ? a.myShare : a.fullAmount;
+                    const valB = summaryView === 'my' ? b.myShare : b.fullAmount;
+                    return valB - valA; // Sort descending by amount
+                });
+
+                const expenseBody = expensesForTable.map(e => [
+                    e.date,
+                    e.category.replace(/_/g, ' '),
+                    e.description || '',
+                    e.isExcluded ? 'Yes' : 'No',
+                    fmtRM(e.myShare),
+                    fmtRM(e.partnerShare || 0),
+                    fmtRM(e.fullAmount)
+                ]);
+
+                pdf.autoTable({
+                    head: [['Date', 'Category', 'Description', 'Excluded', 'My Share', 'Partner\'s Share', 'Full Amount']],
+                    body: expenseBody,
+                    startY: currentY,
+                    headStyles: { fillColor: themeColor },
+                    margin: { top: 10 }
+                });
+            } else {
+                pdf.setFontSize(12);
+                pdf.setTextColor(90);
+                pdf.text('No expense entries recorded for this period.', 40, currentY + 10);
+            }
+            
+            pdf.save(`${reportTitle.replace(/ /g, '_')}.pdf`);
+            closeExpensesOnlyPDFModal();
+        }
+
+        // --- NEW: OT Only PDF Functions ---
+        function launchOTOnlyPDFModal() {
+            closeExportAsModal();
+            const titleInput = document.getElementById('otOnlyReportTitle');
+            const monthName = document.getElementById('currentMonth').value;
+            titleInput.value = `${monthName} Overtime Summary`;
+            document.getElementById('ot-only-pdf-modal').style.display = 'flex';
+        }
+
+        function closeOTOnlyPDFModal() {
+            document.getElementById('ot-only-pdf-modal').style.display = 'none';
+        }
+
+        async function exportOTOnlyPDF() {
+            const reportTitle = document.getElementById('otOnlyReportTitle').value || 'Overtime Only Report';
+            const themeColor = document.getElementById('otOnlyThemeColor').value || '#667eea';
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'pt', 'a4');
+
+            pdf.setFontSize(22);
+            pdf.setTextColor(themeColor);
+            pdf.text(reportTitle, 40, 40);
+            pdf.setFontSize(12);
+            pdf.setTextColor(90);
+            pdf.text(`For: ${document.getElementById('currentMonth').value}`, 40, 60);
+
+            let currentY = 80;
+
+            if (overtimeEntries.length > 0) {
+                pdf.setFontSize(18);
+                pdf.setTextColor(themeColor);
+                pdf.text('Smart OT Allocator', 40, currentY);
+                currentY += 20;
+                
+                // OT Summary Card Data
+                const totalOTHours = overtimeEntries.reduce((sum, e) => sum + e.hours, 0);
+                const totalOTEarnings = overtimeEntries.reduce((sum, e) => sum + e.amount, 0);
+                const averageHourlyRate = totalOTHours > 0 ? totalOTEarnings / totalOTHours : 0;
+
+                const otSummaryItems = [
+                    { value: totalOTHours.toFixed(2) + 'h', label: 'Total Hours', valueColor: '#28a745' },
+                    { value: fmtRM(totalOTEarnings), label: 'Total Earnings', valueColor: '#28a745' },
+                    { value: fmtRM(averageHourlyRate), label: 'Avg. Hourly Rate', valueColor: '#17a2b8' }
+                ];
+                const otSummaryCard = await createSummaryCardImage('Overtime Summary', otSummaryItems, themeColor, pdf);
+                pdf.addImage(otSummaryCard.imgData, 'PNG', 40, currentY, otSummaryCard.imgWidth, otSummaryCard.imgHeight);
+                currentY += otSummaryCard.imgHeight + 10;
+
+
+                const sortedOTEntries = [...overtimeEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const otBody = sortedOTEntries.map(e => [
+                    e.date,
+                    e.dayName,
+                    `${e.startTime || ''} - ${e.endTime || ''}`,
+                    e.hours.toFixed(2),
+                    `${e.rate}x`,
+                    fmtRM(e.amount),
+                    e.remarks || ''
+                ]);
+
+                pdf.autoTable({
+                    head: [['Date', 'Day', 'Time', 'Hours', 'Rate', 'Earnings', 'Remarks']],
+                    body: otBody,
+                    startY: currentY,
+                    headStyles: { fillColor: themeColor },
+                    margin: { top: 10 }
+                });
+            } else {
+                pdf.setFontSize(12);
+                pdf.setTextColor(90);
+                pdf.text('No overtime entries recorded for this period.', 40, currentY + 10);
+            }
+            
+            pdf.save(`${reportTitle.replace(/ /g, '_')}.pdf`);
+            closeOTOnlyPDFModal();
+        }
+
 
         // --- SINKING FUNDS ---
         function addSinkingFund() {
