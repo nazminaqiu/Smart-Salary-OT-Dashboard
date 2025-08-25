@@ -4,15 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Smart Salary & Overtime Tracker with AI Allocation</title>
-    <!-- Flatpickr CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
-    <!-- jsPDF for PDF Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-    <!-- html2canvas for rendering UI to image for PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- FullCalendar for Calendar View -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
     <style>
@@ -27,6 +23,8 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
+            color: #333;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .container {
@@ -40,6 +38,7 @@
             padding: 30px;
             margin-bottom: 30px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease;
         }
 
         .header h1 {
@@ -101,7 +100,7 @@
             border-radius: 15px;
             padding: 25px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         .card:hover {
@@ -114,6 +113,7 @@
             margin-bottom: 20px;
             padding-bottom: 10px;
             border-bottom: 2px solid #667eea;
+            transition: color 0.3s ease;
         }
 
         .stat-value {
@@ -126,6 +126,7 @@
         .stat-label {
             color: #666;
             font-size: 0.9em;
+            transition: color 0.3s ease;
         }
 
         .tabs {
@@ -167,6 +168,7 @@
             border-radius: 15px;
             padding: 30px;
             margin-bottom: 20px;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         .form-grid {
@@ -195,6 +197,7 @@
             margin-bottom: 5px;
             color: #333;
             font-weight: 500;
+            transition: color 0.3s ease;
         }
 
         .form-group input,
@@ -203,7 +206,7 @@
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             font-size: 16px;
-            transition: border-color 0.3s ease;
+            transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
         }
 
         .form-group input:focus,
@@ -220,7 +223,7 @@
             border-radius: 8px;
             font-size: 16px;
             cursor: pointer;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, background-color 0.3s ease;
             margin-right: 10px;
             margin-top: 10px;
         }
@@ -265,6 +268,7 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         th, tfoot td {
@@ -297,6 +301,7 @@
         td {
             padding: 12px;
             border-bottom: 1px solid #e0e0e0;
+            transition: border-color 0.3s ease;
         }
         
         td input, td select {
@@ -304,6 +309,7 @@
             padding: 5px;
             border-radius: 5px;
             border: 1px solid #ccc;
+            transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
         }
         
         .hours-input-group {
@@ -321,6 +327,7 @@
             border: 1px solid #ccc;
             background: #f0f0f0;
             cursor: pointer;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
         }
 
 
@@ -362,6 +369,7 @@
             padding: 20px;
             border-radius: 10px;
             text-align: center;
+            transition: background 0.3s ease;
         }
 
         .progress-bar {
@@ -371,6 +379,7 @@
             border-radius: 15px;
             overflow: hidden;
             margin: 10px 0;
+            transition: background-color 0.3s ease;
         }
 
         .progress-fill {
@@ -419,6 +428,7 @@
             padding: 15px;
             border-radius: 8px;
             margin: 10px 0;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
 
         .alert-success {
@@ -451,6 +461,7 @@
             border-radius: 8px;
             padding: 15px;
             margin-top: 20px;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
         }
 
         .ot-preview-item {
@@ -461,6 +472,7 @@
             background: white;
             border-radius: 5px;
             border-left: 4px solid #667eea;
+            transition: background-color 0.3s ease;
         }
 
         .savings-indicator {
@@ -702,6 +714,7 @@
             border-radius: 10px;
             background: #f8f9fa;
             border: 1px solid #e9ecef;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
         }
         .mini-simulator h4 {
             margin-bottom: 15px;
@@ -783,6 +796,111 @@
             background: rgba(255, 255, 255, 0.5);
         }
 
+        /* ---------------------------------
+           DARK THEME STYLES
+        --------------------------------- */
+        body.dark-theme {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: #e0e0e0;
+        }
+        body.dark-theme .header {
+            background: #212f3d;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        body.dark-theme h1,
+        body.dark-theme h2,
+        body.dark-theme h3,
+        body.dark-theme h4 {
+            color: #ecf0f1;
+        }
+        body.dark-theme .header h1 {
+            -webkit-text-fill-color: #ecf0f1;
+        }
+        body.dark-theme .card,
+        body.dark-theme .form-section,
+        body.dark-theme .ot-preview-item,
+        body.dark-theme .modal-content,
+        body.dark-theme .mini-simulator,
+        body.dark-theme .sinking-fund-card {
+            background: #2c3e50;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+        body.dark-theme .stat-label,
+        body.dark-theme .form-group label,
+        body.dark-theme table,
+        body.dark-theme th, body.dark-theme td,
+        body.dark-theme .tooltip-text {
+            color: #bdc3c7;
+        }
+        body.dark-theme .card-title {
+            color: #ecf0f1;
+        }
+        body.dark-theme .form-group input,
+        body.dark-theme .form-group select,
+        body.dark-theme td input,
+        body.dark-theme td select {
+            background: #34495e;
+            border-color: #44617a;
+            color: #ecf0f1;
+        }
+        body.dark-theme .form-group input:focus,
+        body.dark-theme .form-group select:focus {
+            border-color: #667eea;
+        }
+        body.dark-theme .alert {
+            background: #1f3242;
+            color: #c0c9d2;
+            border-color: #34495e;
+        }
+        body.dark-theme .alert-success { background: #166d25; color: #d4edda; border-color: #218838; }
+        body.dark-theme .alert-warning { background: #856404; color: #fff3cd; border-color: #a58f4c; }
+        body.dark-theme .alert-danger { background: #721c24; color: #f8d7da; border-color: #9c333f; }
+        body.dark-theme .alert-info { background: #0b4952; color: #d1ecf1; border-color: #117a8b; }
+        body.dark-theme table,
+        body.dark-theme tbody tr {
+            background-color: transparent;
+        }
+        body.dark-theme td {
+            border-bottom-color: #44617a;
+        }
+        body.dark-theme tr:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+        body.dark-theme .split-pill {
+            background-color: #3f586e;
+            color: #ecf0f1;
+        }
+        body.dark-theme .hours-input-group button {
+            background: #34495e;
+            border-color: #44617a;
+            color: #ecf0f1;
+        }
+        body.dark-theme .hours-input-group button:hover {
+            background: #44617a;
+        }
+        body.dark-theme .summary-item {
+            background: #2c3e50;
+        }
+        body.dark-theme .progress-bar {
+            background: #44617a;
+        }
+        body.dark-theme .ot-allocation-preview {
+            background: #34495e;
+            border-color: #44617a;
+        }
+        body.dark-theme .ot-preview-item {
+            background: #2c3e50;
+        }
+        body.dark-theme .modal-close {
+            color: #bdc3c7;
+        }
+        body.dark-theme .fc-event-adjuster .adjust-btn {
+            background: rgba(189, 195, 199, 0.2);
+            color: #ecf0f1;
+        }
+        body.dark-theme .fc-event-adjuster .adjust-btn:hover {
+            background: rgba(189, 195, 199, 0.4);
+        }
 
         @media (max-width: 768px) {
             .header h1 {
@@ -800,13 +918,15 @@
     <input type="file" id="import-file" accept=".json" style="display: none;">
     <div class="container">
         <div class="header">
-            <h1>💼 Advanced Smart Salary & Overtime Tracker</h1>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <h1>💼 Advanced Smart Salary & Overtime Tracker</h1>
+                <button class="btn btn-secondary" onclick="toggleTheme()">🌓 Toggle Theme</button>
+            </div>
             <div class="btn-group">
                 <button class="btn btn-warning" onclick="launchSimulator()">シ What-If Simulator</button>
                 <button class="btn btn-info" onclick="triggerImport()">📥 Import Data</button>
                 <button class="btn btn-secondary" onclick="launchExportAsModal()">📤 Export As...</button>
             </div>
-            <!-- GLOBAL SETTINGS -->
             <div class="global-settings">
                 <div class="form-group">
                     <label>Pay Period</label>
@@ -892,7 +1012,6 @@
             <div class="tab" id="tab-btn-summary" onclick="switchTab(event, 'summary')">📊 Financial Summary</div>
         </div>
 
-        <!-- Salary Input Tab -->
         <div id="salary-tab" class="tab-content">
             <div class="form-section">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -963,7 +1082,6 @@
             </div>
         </div>
 
-        <!-- Savings Targets Tab -->
         <div id="targets-tab" class="tab-content active">
             <div class="form-section">
                 <h3 class="card-title">Savings Target & OT Planner</h3>
@@ -998,8 +1116,7 @@
                 <div id="savingsAnalysis" style="margin-top: 30px; display: none;">
                     <h4>Next Month's Savings Projection</h4>
                     <div class="alert" id="savingsAlert"></div>
-                     <!-- AI COACH SECTION -->
-                    <div id="aiCoachSection" class="alert alert-warning" style="display: none;">
+                     <div id="aiCoachSection" class="alert alert-warning" style="display: none;">
                         <h4>💡 AI Savings Coach</h4>
                         <p id="aiCoachText"></p>
                         <div id="aiCoachSuggestions"></div>
@@ -1018,8 +1135,7 @@
                         <div class="summary-item">
                             <div class="stat-label">OT Needed for Next Month's Goal</div>
                             <div style="font-size: 1.5em; font-weight: bold; color: #ff9800;" id="otRequired">RM 0.00</div>
-                             <!-- NEW: "One-Click OT Plan" Button -->
-                            <button id="createOTPlanBtn" class="btn btn-small" style="margin-top: 10px;" onclick="createOTPlan()">Create OT Plan for this Target</button>
+                             <button id="createOTPlanBtn" class="btn btn-small" style="margin-top: 10px;" onclick="createOTPlan()">Create OT Plan for this Target</button>
                         </div>
                         <div class="summary-item">
                             <div class="stat-label">Hours to Work This Period</div>
@@ -1027,7 +1143,6 @@
                         </div>
                     </div>
                     
-                    <!-- NEW: Interactive "What-If" Levers -->
                     <div class="mini-simulator" id="miniSimulatorSection" style="display: none;">
                         <h4>How can I reduce my needed OT?</h4>
                         <div class="mini-simulator-controls">
@@ -1070,7 +1185,6 @@
             </div>
         </div>
 
-        <!-- Sinking Funds Tab -->
         <div id="sinking-funds-tab" class="tab-content">
             <div class="form-section">
                 <h3 class="card-title">Add a New Future Goal (Sinking Fund)</h3>
@@ -1096,12 +1210,10 @@
             <div class="form-section">
                 <h3 class="card-title">Your Active Goals</h3>
                 <div id="sinkingFundsContainer" class="sinking-funds-grid">
-                    <!-- Sinking funds will be dynamically added here -->
-                </div>
+                    </div>
             </div>
         </div>
 
-        <!-- Expenses Tracker Tab -->
         <div id="expenses-tab" class="tab-content">
             <div class="form-section">
                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
@@ -1193,7 +1305,6 @@
             </div>
         </div>
         
-        <!-- Smart OT Allocator Tab -->
         <div id="overtime-tab" class="tab-content">
             <div class="form-section">
                 <h3 class="card-title">Smart Overtime Allocator</h3>
@@ -1277,8 +1388,7 @@
                         Use the buttons to proportionally adjust the total hours for each day type.
                     </div>
                     <div class="form-grid" id="otAdjusterGrid">
-                        <!-- JS will populate this area -->
-                    </div>
+                        </div>
                     <div class="percentage-group">
                         <h4>Rate Allocation Percentage</h4>
                         <div class="percentage-input-container">
@@ -1321,12 +1431,10 @@
                     <h4 style="margin-top: 30px;">Current OT Entries</h4>
                     <button class="btn btn-small btn-danger" onclick="deleteAllOTEntries()">Delete All</button>
                 </div>
-                <!-- NEW: Calendar View Container -->
                 <div id="otCalendar"></div>
             </div>
         </div>
 
-        <!-- Financial Summary Tab -->
         <div id="summary-tab" class="tab-content">
             <div class="form-section">
                 <div style="display:flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
@@ -1351,6 +1459,7 @@
                         <div style="font-size: 1.8em; font-weight: bold; color: #17a2b8;" id="summaryBaseNet">RM 0.00</div>
                     </div>
                      <div class="summary-item">
+                        <div class="stat-label">Net Income</div>
                         <div style="font-size: 1.8em; font-weight: bold; color: #2196f3;" id="summaryNet">RM 0.00</div>
                     </div>
                     <div class="summary-item">
@@ -1378,6 +1487,7 @@
                         <div style="font-size: 1.2em; font-weight: bold;" id="incomeBasic">RM 0.00</div>
                     </div>
                     <div class="summary-item">
+                        <div class="stat-label">Overtime Paid</div>
                         <div style="font-size: 1.2em; font-weight: bold;" id="incomeOT">RM 0.00</div>
                     </div>
                     <div class="summary-item">
@@ -1385,6 +1495,7 @@
                         <div style="font-size: 1.2em; font-weight: bold;" id="incomeAllowances">RM 0.00</div>
                     </div>
                     <div class="summary-item">
+                        <div class="stat-label">Other Income</div>
                         <div style="font-size: 1.2em; font-weight: bold;" id="incomeOthers">RM 0.00</div>
                     </div>
                 </div>
@@ -1396,7 +1507,6 @@
         
     </div>
     
-    <!-- What-If Simulator Modal -->
     <div id="simulator-modal" class="modal-overlay">
         <div class="modal-content">
             <span class="modal-close" onclick="closeSimulator()">&times;</span>
@@ -1413,15 +1523,13 @@
                 <div class="form-group">
                     <label>Reduce an Expense Category (%)</label>
                     <select id="simExpenseCategory" onchange="runSimulation()">
-                        <!-- Options will be populated by JS -->
-                    </select>
+                        </select>
                 </div>
                 <div class="form-group">
                     <label>Reduction Percentage</label>
                     <input type="number" id="simExpenseReduction" placeholder="e.g., 10" oninput="runSimulation()">
                 </div>
-                 <!-- NEW: Partner Contribution Simulator -->
-                <div class="form-group">
+                 <div class="form-group">
                     <label>Partner Adds (RM/month)</label>
                     <input type="number" id="simPartnerContribution" placeholder="e.g., 500" oninput="runSimulation()">
                 </div>
@@ -1432,7 +1540,6 @@
         </div>
     </div>
 
-    <!-- Settle Up Modal -->
     <div id="settleup-modal" class="modal-overlay">
         <div class="modal-content">
             <span class="modal-close" onclick="closeSettleUp()">&times;</span>
@@ -1441,7 +1548,6 @@
         </div>
     </div>
     
-    <!-- NEW: Detailed Report PDF Modal -->
     <div id="detailed-pdf-modal" class="modal-overlay">
         <div class="modal-content">
             <span class="modal-close" onclick="closeDetailedPDFModal()">&times;</span>
@@ -1463,7 +1569,6 @@
         </div>
     </div>
 
-    <!-- NEW: Expenses Only PDF Modal -->
     <div id="expenses-only-pdf-modal" class="modal-overlay">
         <div class="modal-content">
             <span class="modal-close" onclick="closeExpensesOnlyPDFModal()">&times;</span>
@@ -1485,7 +1590,6 @@
         </div>
     </div>
 
-    <!-- NEW: OT Only PDF Modal -->
     <div id="ot-only-pdf-modal" class="modal-overlay">
         <div class="modal-content">
             <span class="modal-close" onclick="closeOTOnlyPDFModal()">&times;</span>
@@ -1503,7 +1607,6 @@
         </div>
     </div>
     
-    <!-- NEW: Export As Modal -->
     <div id="export-as-modal" class="modal-overlay">
         <div class="modal-content">
             <span class="modal-close" onclick="closeExportAsModal()">&times;</span>
@@ -1557,7 +1660,6 @@
     </div>
 
 
-    <!-- NEW: Recurring Expenses Prompt Modal -->
     <div id="recurring-prompt-modal" class="modal-overlay">
         <div class="modal-content">
             <span class="modal-close" onclick="closeRecurringPrompt()">&times;</span>
@@ -1570,7 +1672,6 @@
         </div>
     </div>
 
-    <!-- NEW: Top Up Options Modal -->
     <div id="topup-modal" class="modal-overlay">
         <div class="modal-content">
             <span class="modal-close" onclick="closeTopUpModal()">&times;</span>
@@ -1583,7 +1684,6 @@
         </div>
     </div>
     
-    <!-- NEW: OT Entry Edit Modal -->
     <div id="ot-edit-modal" class="modal-overlay">
         <div class="modal-content">
             <span class="modal-close" onclick="closeOTEditModal()">&times;</span>
@@ -1632,7 +1732,6 @@
     </div>
 
 
-    <!-- Flatpickr JS -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
     <script>
@@ -1654,6 +1753,11 @@
             const finalMinute = endMinute % 60;
 
             return `${String(finalHour % 24).padStart(2, '0')}:${String(finalMinute).padStart(2, '0')}`;
+        }
+
+        // --- THEME SWITCHER LOGIC ---
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
         }
 
         // --- SIMULATOR LOGIC ---
@@ -3085,7 +3189,7 @@
                     totalFullAmount += expense.fullAmount || 0;
                 }
 
-                const profileMap = {'equal50': '50/50', 'mine100': 'Mine 100%', 'partner100': 'Partner 100%', 'custom': 'Custom'};
+                const profileMap = {'equal50': '50/50', 'mine100': 'You Pay 100%', 'partner100': 'Partner Pays 100%', 'custom': 'Custom'};
                 const profileText = profileMap[expense.splitProfile] || 'Custom';
 
                 const row = tbody.insertRow();
@@ -3430,7 +3534,8 @@
             
             const includedExpenses = expenses.filter(e => !e.isExcluded);
             const totalMyShare = includedExpenses.reduce((sum, e) => sum + e.myShare, 0);
-            const totalFullAmount = includedExpenses.reduce((sum, e) => sum + e.fullAmount, 0);
+            const totalPartnerShare = includedExpenses.reduce((sum, e) => sum + (e.partnerShare || 0), 0);
+            const totalFullAmount = includedExpenses.reduce((sum, e) => sum + (e.fullAmount || 0), 0);
 
             const expensesToDisplay = summaryView === 'my' ? totalMyShare : totalFullAmount;
             const personalSavings = netIncome - totalMyShare;
