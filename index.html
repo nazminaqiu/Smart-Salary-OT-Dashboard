@@ -107,9 +107,10 @@
 
         <div class="tabs">
             <div class="tab" id="tab-btn-salary" onclick="switchTab(event, 'salary')">💵 Salary & Auto-Deductions</div>
-            <div class="tab active" id="tab-btn-targets" onclick="switchTab(event, 'targets')">🎯 Savings Targets</div>
-            <div class="tab" id="tab-btn-sinking-funds" onclick="switchTab(event, 'sinking-funds')">🌱 Future Goals & Sinking Funds</div>
+            <div class="tab active" id="tab-btn-targets" onclick="switchTab(event, 'targets')">🎯 Savings Tracker</div>
+            <div class="tab" id="tab-btn-sinking-funds" onclick="switchTab(event, 'sinking-funds')">🌱 Future Goals</div>
             <div class="tab" id="tab-btn-expenses" onclick="switchTab(event, 'expenses')">📝 Expenses Tracker</div>
+            <div class="tab" id="tab-btn-budgeting" onclick="switchTab(event, 'budgeting')">💰 Budgeting</div>
             <div class="tab" id="tab-btn-overtime" onclick="switchTab(event, 'overtime')">⏰ Smart OT Allocator</div>
             <div class="tab" id="tab-btn-summary" onclick="switchTab(event, 'summary')">📊 Financial Summary</div>
         </div>
@@ -269,6 +270,7 @@
                 <div class="progress-bar">
                     <div class="progress-fill" id="savingsProgress" style="width: 0%">0%</div>
                 </div>
+                 <button class="btn btn-success" id="logSavingsBtn" onclick="logSavingsAsExpense()" style="width: 100%; margin-top: 15px;">Log Current Surplus to Expenses</button>
                 
                 <div class="summary-grid">
                     <div class="summary-item">
@@ -285,15 +287,33 @@
                     </div>
                 </div>
             </div>
+            <div class="form-section">
+                <h3 class="card-title">🍯 Savings Pots</h3>
+                <div class="alert alert-info">
+                    Use Savings Pots for smaller, flexible goals. Add funds to them anytime, and they'll be logged as a 'Savings & Investments' expense.
+                </div>
+                <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr; align-items: end;">
+                     <div class="form-group">
+                        <label>Pot Name</label>
+                        <input type="text" id="potName" placeholder="e.g., New Phone">
+                    </div>
+                    <div class="form-group">
+                        <label>Target Amount (RM)</label>
+                        <input type="number" id="potTotal" step="50" placeholder="e.g., 500">
+                    </div>
+                    <button class="btn btn-success" onclick="addSavingsPot()">Add Pot</button>
+                </div>
+                <div id="savingsPotsContainer" class="sinking-funds-grid"></div>
+            </div>
         </div>
 
         <div id="sinking-funds-tab" class="tab-content">
             <div class="form-section">
-                <h3 class="card-title">Add a New Future Goal (Sinking Fund)</h3>
+                <h3 class="card-title">Add a New Future Goal</h3>
                 <div class="alert alert-info">
                     Use this section to plan for large, upcoming expenses. The system will calculate a monthly savings amount to ensure you're prepared.
                 </div>
-                <div class="form-grid">
+                <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
                     <div class="form-group">
                         <label>Goal Name</label>
                         <input type="text" id="fundName" placeholder="e.g., Car Insurance 2026">
@@ -306,13 +326,33 @@
                         <label>Due Date</label>
                         <input type="text" id="fundDueDate" placeholder="Select a future date...">
                     </div>
+                    <div class="form-group">
+                        <label>Icon</label>
+                        <select id="fundIcon">
+                            <option value="💰">💰</option>
+                            <option value="🚗">🚗</option>
+                            <option value="✈️">✈️</option>
+                            <option value="🏠">🏠</option>
+                            <option value="🎓">🎓</option>
+                            <option value="🎁">🎁</option>
+                            <option value="🎉">🎉</option>
+                            <option value="💻">💻</option>
+                            <option value="💍">💍</option>
+                        </select>
+                    </div>
                 </div>
                 <button class="btn btn-success" onclick="addSinkingFund()">🌱 Add New Goal</button>
             </div>
             <div class="form-section">
-                <h3 class="card-title">Your Active Goals</h3>
-                <div id="sinkingFundsContainer" class="sinking-funds-grid">
+                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                    <h3 class="card-title" style="margin: 0;">Your Active Goals</h3>
+                    <div>
+                         <button class="btn btn-info" onclick="allocateAllGoals()">✅ Allocate All</button>
+                         <button class="btn btn-secondary" id="toggleArchivedBtn" onclick="toggleShowArchived()">👁️ Show Archived</button>
                     </div>
+                </div>
+                <div id="sinkingFundsContainer" class="sinking-funds-grid"></div>
+                <div id="archivedSinkingFundsContainer" class="sinking-funds-grid archived-grid" style="display: none;"></div>
             </div>
         </div>
 
@@ -407,6 +447,24 @@
             </div>
         </div>
         
+        <div id="budgeting-tab" class="tab-content">
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 class="card-title">Monthly Budgeting</h3>
+                    <button class="btn btn-info" onclick="copyLastMonthBudgets()">⎘ Copy Last Month's Budgets</button>
+                </div>
+                <div class="alert alert-info">
+                    Set a budget for each category to track your spending. Your progress is automatically updated as you add expenses. Budgets are saved per month.
+                </div>
+                
+                <div class="summary-grid" id="budgetSummary">
+                    </div>
+
+                <div id="budgetContainer" class="budget-grid">
+                </div>
+            </div>
+        </div>
+
         <div id="overtime-tab" class="tab-content">
             <div class="form-section">
                 <h3 class="card-title">Smart Overtime Allocator</h3>
@@ -763,7 +821,6 @@
         </div>
     </div>
 
-
     <div id="recurring-prompt-modal" class="modal-overlay">
         <div class="modal-content">
             <span class="modal-close" onclick="closeRecurringPrompt()">&times;</span>
@@ -849,12 +906,64 @@
                     <label>Total Amount Needed (RM)</label>
                     <input type="number" id="fundEditTotal" step="50" placeholder="e.g., 2500">
                 </div>
+                 <div class="form-group">
+                    <label>Icon</label>
+                    <select id="fundEditIcon">
+                        <option value="💰">💰</option>
+                        <option value="🚗">🚗</option>
+                        <option value="✈️">✈️</option>
+                        <option value="🏠">🏠</option>
+                        <option value="🎓">🎓</option>
+                        <option value="🎁">🎁</option>
+                        <option value="🎉">🎉</option>
+                        <option value="💻">💻</option>
+                        <option value="💍">💍</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label>Due Date</label>
                     <input type="text" id="fundEditDueDate" placeholder="Select a future date...">
                 </div>
             </div>
             <button class="btn btn-success" style="width: 100%; margin-top: 15px;" onclick="saveSinkingFundFromModal()">Save Changes</button>
+        </div>
+    </div>
+
+     <div id="add-funds-pot-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeAddFundsToPotModal()">&times;</span>
+            <h2 id="addFundsToPotTitle">Add Funds</h2>
+            <input type="hidden" id="potAddFundsId">
+            <div class="form-group">
+                <label>Amount to Add (RM)</label>
+                <input type="number" id="potAddFundsAmount" step="10" placeholder="e.g., 50">
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="addFundsToPot()">Add Funds</button>
+        </div>
+    </div>
+    
+    <div id="extra-contribution-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeExtraContributionModal()">&times;</span>
+            <h2 id="extraContributionTitle">Add Extra Contribution</h2>
+            <input type="hidden" id="fundExtraContributionId">
+            <div class="form-group">
+                <label>Amount (RM)</label>
+                <input type="number" id="fundExtraAmount" step="10" placeholder="e.g., 100">
+            </div>
+             <div class="form-group">
+                <label>Description (Optional)</label>
+                <input type="text" id="fundExtraDescription" placeholder="e.g., Birthday Money">
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="addExtraContribution()">Add Contribution</button>
+        </div>
+    </div>
+    
+    <div id="contribution-history-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeContributionHistoryModal()">&times;</span>
+            <h2 id="contributionHistoryTitle">Contribution History</h2>
+            <div id="contributionHistoryContent"></div>
         </div>
     </div>
 

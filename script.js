@@ -1,3 +1,4 @@
+
 // --- HELPER FUNCTIONS ---
 const round2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
 const fmtRM = n => `RM ${round2(n).toFixed(2)}`;
@@ -34,6 +35,15 @@ function addHoursToTime(timeStr, hours) {
     const finalMinute = endMinute % 60;
 
     return `${String(finalHour % 24).padStart(2, '0')}:${String(finalMinute).padStart(2, '0')}`;
+}
+
+function getRatioFromProfile(profile) {
+    switch (profile) {
+        case 'mine100': return 1;
+        case 'partner100': return 0;
+        case 'equal50': return 0.5;
+        default: return null;
+    }
 }
 
 // --- THEME SWITCHER LOGIC ---
@@ -112,6 +122,8 @@ let savingsGoalsData = {};
 let overtimeEntries = [];
 let expenses = [];
 let sinkingFunds = [];
+let savingsPots = [];
+let budgets = {}; 
 let recurringExpenses = [];
 let previewedOTEntries = [];
 let currentPayPeriod = '';
@@ -122,6 +134,7 @@ let manualExpenseSet = false;
 let summaryView = 'my';
 let aiSavingsPlan = {};
 let otCalendar;
+let showArchived = false;
 
 
 const generateId = () => 'id_' + Math.random().toString(36).substr(2, 9);
@@ -137,7 +150,8 @@ function getNewPeriodData() {
         salaryData: { basic: 0, claims: 0, hpAllowance: 80, incentive: 500, bonus: 0, otherIncome: 0, epf: 0, socso: 0, eis: 0, pcb: 0, cashAdvance: 0, otherDeductions: 0 },
         overtimeEntries: [],
         expenses: [],
-        savingsGoalsData: { targetSavings: 0, expectedExpenses: 0, emergencyFundGoal: 0, currentEmergencyFund: 0 }
+        savingsGoalsData: { targetSavings: 0, expectedExpenses: 0, emergencyFundGoal: 0, currentEmergencyFund: 0 },
+        budgets: {} 
     };
 }
 
@@ -170,6 +184,9 @@ function initializeData() {
     
     const savedSinkingFunds = localStorage.getItem('sinkingFunds');
     sinkingFunds = savedSinkingFunds ? JSON.parse(savedSinkingFunds) : [];
+    
+    const savedSavingsPots = localStorage.getItem('savingsPots');
+    savingsPots = savedSavingsPots ? JSON.parse(savedSavingsPots) : [];
 
     loadDataForPeriod(currentPayPeriod);
     
@@ -206,12 +223,14 @@ function loadDataForPeriod(period) {
         const rawExpenses = JSON.parse(localStorage.getItem(`expenses_${period}`) || '[]');
         expenses = rawExpenses.map(migrateExpenseRow);
         savingsGoalsData = JSON.parse(localStorage.getItem(`savingsGoalsData_${period}`) || '{}');
+        budgets = JSON.parse(localStorage.getItem(`budgets_${period}`) || '{}');
     } else {
         const newData = getNewPeriodData();
         salaryData = newData.salaryData;
         overtimeEntries = newData.overtimeEntries;
         expenses = newData.expenses;
         savingsGoalsData = newData.savingsGoalsData;
+        budgets = newData.budgets;
     }
 
     document.getElementById('basicSalary').value = salaryData.basic || '';
@@ -249,14 +268,18 @@ function saveDataForPeriod(period) {
     localStorage.setItem(`overtimeEntries_${period}`, JSON.stringify(overtimeEntries));
     localStorage.setItem(`expenses_${period}`, JSON.stringify(expenses));
     localStorage.setItem(`savingsGoalsData_${period}`, JSON.stringify(savingsGoalsData));
+    localStorage.setItem(`budgets_${period}`, JSON.stringify(budgets));
     localStorage.setItem('sinkingFunds', JSON.stringify(sinkingFunds));
+    localStorage.setItem('savingsPots', JSON.stringify(savingsPots));
 }
 
 function updateAllDisplays() {
     autoCalculateDeductions();
     displayOTEntries();
     displayExpenses();
+    displayBudgets();
     displaySinkingFunds();
+    displaySavingsPots();
     updateDashboard();
     updateSummary();
     updateSavingsAnalysis();
@@ -267,7 +290,6 @@ function setDefaultOtDates() {
     if (!payPeriod) return;
     const [year, month] = payPeriod.split('-').map(Number);
     
-    // New logic: 26th of previous month to 25th of current month
     const otStartDate = new Date(year, month - 2, 26);
     const otEndDate = new Date(year, month - 1, 25);
     
@@ -431,7 +453,7 @@ function initializeDatePickers() {
         altFormat: "d/m/Y",
         dateFormat: "Y-m-d",
         "locale": {
-            "firstDayOfWeek": 1 // start week on Monday
+            "firstDayOfWeek": 1
         }
     };
 
@@ -489,7 +511,7 @@ function initializeCalendar() {
     const calendarEl = document.getElementById('otCalendar');
     otCalendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
-        firstDay: 1, // Start on Monday
+        firstDay: 1,
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
@@ -542,7 +564,6 @@ function formatOTEntriesForCalendar() {
     }));
 }
 
-// --- NEW: Function to adjust OT from calendar view ---
 function adjustOTFromCalendar(entryId, amount) {
     const entryIndex = overtimeEntries.findIndex(e => e.id === entryId);
     if (entryIndex === -1) return;
@@ -550,7 +571,7 @@ function adjustOTFromCalendar(entryId, amount) {
     const entry = overtimeEntries[entryIndex];
     const newHours = round2(entry.hours + amount);
 
-    if (newHours < 0) return; // Don't allow negative hours
+    if (newHours < 0) return;
 
     entry.hours = newHours;
 
@@ -563,19 +584,17 @@ function adjustOTFromCalendar(entryId, amount) {
         entry.endTime = addHoursToTime(entry.startTime, entry.hours);
     }
 
-    // If hours are 0, remove the entry
     if (entry.hours === 0) {
         if (confirm("Hours are zero. Do you want to delete this entry?")) {
             overtimeEntries.splice(entryIndex, 1);
         } else {
-            // If user cancels deletion, revert hours back
             entry.hours = round2(entry.hours - amount);
             return;
         }
     }
 
     saveDataForPeriod(currentPayPeriod);
-    displayOTEntries(); // This will refetch events for the calendar
+    displayOTEntries();
     updateDashboard();
 }
 
@@ -1112,7 +1131,7 @@ function adjustHoursByDayType(dayType, adjustment) {
                 .sort((a, b) => b.hours - a.hours);
 
             if (eligibleToRemove.length === 0) {
-                break; // No hours to remove
+                break;
             }
             eligibleEntry = eligibleToRemove[0];
         }
@@ -1150,7 +1169,6 @@ function deleteAllOTEntries() {
     }
 }
 
-// --- NEW SHUFFLE FUNCTION ---
 function shuffleSchedule() {
     if (overtimeEntries.length === 0) {
         alert("There is no schedule to shuffle. Please generate one first.");
@@ -1336,25 +1354,17 @@ function deleteOTEntryFromModal() {
 // --- EXPENSE FUNCTIONS ---
 function applySplitProfile() {
     const profile = document.getElementById('expenseSplitProfile').value;
-    const fullAmountEl = document.getElementById('expenseFullAmount');
     const myShareEl = document.getElementById('myShare');
     const partnerShareEl = document.getElementById('partnerShare');
+    
+    const total = (parseFloat(myShareEl.value) || 0) + (parseFloat(partnerShareEl.value) || 0);
+    const ratio = getRatioFromProfile(profile);
 
-    if (profile === 'equal50') {
-        const myShare = parseFloat(myShareEl.value) || 0;
-        const partnerShare = parseFloat(partnerShareEl.value) || 0;
-        const total = myShare + partnerShare;
-        if (total > 0) {
-            myShareEl.value = (total / 2).toFixed(2);
-            partnerShareEl.value = (total / 2).toFixed(2);
-        }
-    } else if (profile === 'mine100') {
-        const myShare = parseFloat(myShareEl.value) || 0;
-        partnerShareEl.value = '';
-    } else if (profile === 'partner100') {
-        const partnerShare = parseFloat(partnerShareEl.value) || 0;
-        myShareEl.value = '';
+    if (ratio !== null && total > 0) {
+        myShareEl.value = round2(total * ratio).toFixed(2);
+        partnerShareEl.value = round2(total * (1 - ratio)).toFixed(2);
     }
+    
     updateShares();
 }
 
@@ -1412,6 +1422,7 @@ function addExpense() {
 
     saveDataForPeriod(currentPayPeriod);
     displayExpenses();
+    displayBudgets(); 
     updateDashboard();
     
     document.getElementById('myShare').value = '';
@@ -1536,7 +1547,12 @@ function makeEditable(cell, id, field) {
             const myShare = expenses[expenseIndex].myShare || 0;
             const partnerShare = expenses[expenseIndex].partnerShare || 0;
             expenses[expenseIndex].fullAmount = round2(myShare + partnerShare);
-            expenses[expenseIndex].splitProfile = 'custom';
+            
+            if (myShare > 0 && partnerShare === 0) expenses[expenseIndex].splitProfile = 'mine100';
+            else if (myShare === 0 && partnerShare > 0) expenses[expenseIndex].splitProfile = 'partner100';
+            else if (myShare > 0 && myShare === partnerShare) expenses[expenseIndex].splitProfile = 'equal50';
+            else expenses[expenseIndex].splitProfile = 'custom';
+
         } else if (field === 'splitProfile') {
             expenses[expenseIndex].splitProfile = newValue;
             const ratio = getRatioFromProfile(newValue);
@@ -1551,9 +1567,7 @@ function makeEditable(cell, id, field) {
         }
         
         saveDataForPeriod(currentPayPeriod);
-        updateDashboard();
-        updateSummary();
-        displayExpenses();
+        updateAllDisplays(); 
     };
     
     switch (field) {
@@ -1612,6 +1626,7 @@ function makeEditable(cell, id, field) {
     }
 }
 
+
 function deleteExpense(id) {
     const expenseIndex = expenses.findIndex(e => e.id === id);
     if (expenseIndex > -1) {
@@ -1626,6 +1641,7 @@ function deleteExpense(id) {
         expenses.splice(expenseIndex, 1);
         saveDataForPeriod(currentPayPeriod);
         displayExpenses();
+        displayBudgets(); 
         updateDashboard();
     }
 }
@@ -1636,6 +1652,8 @@ function getExpensesSum(useHousehold=false){
     .filter(e => !e.isExcluded)
     .reduce((s,e)=> s + (useHousehold ? (e.fullAmount||0) : (e.myShare||0)), 0);
 }
+
+
 
 function updateSavingsAnalysis() {
     const targetSavings = parseFloat(document.getElementById('targetSavings').value) || 0;
@@ -1655,7 +1673,7 @@ function updateSavingsAnalysis() {
         return;
     }
     
-    const baseNetIncome = getNetIncome(0, false); // **PATCH**: Include claims for projection
+    const baseNetIncome = getNetIncome(0, false); 
     const afterExpenses = baseNetIncome - expectedExpensesValue;
     const otRequired = Math.max(0, targetSavings + expectedExpensesValue - baseNetIncome);
     
@@ -1687,7 +1705,6 @@ function updateSavingsAnalysis() {
     runMiniSimulator();
 }
 
-// --- [START] HYBRID/PATCHED refreshSavingsHeader FUNCTION ---
 function refreshSavingsHeader() {
     const target = +document.getElementById('targetSavings').value || 0;
     const indContainer = document.getElementById('savingsIndicatorContainer');
@@ -1695,7 +1712,6 @@ function refreshSavingsHeader() {
     const actualVsTargetLabel = document.getElementById('actualVsTargetLabel');
     const savingsActualEl = document.getElementById('savingsActual');
 
-    // These calculations are needed for both scenarios
     const prevPeriod = getPreviousMonthPeriod(currentPayPeriod);
     const prevOTEntries = JSON.parse(localStorage.getItem(`overtimeEntries_${prevPeriod}`) || '[]');
     const totalOT = prevOTEntries.reduce((sum, e) => sum + e.amount, 0);
@@ -1703,12 +1719,9 @@ function refreshSavingsHeader() {
     const totalMyShare = expenses.filter(e => !e.isExcluded).reduce((sum, e) => sum + e.myShare, 0);
     const actualSavings = netIncomeForSavings - totalMyShare;
 
-    // This function populates the global `aiSavingsPlan` variable
     runAICoach(); 
 
     if (target === 0) {
-        // --- HYBRID IDEA IMPLEMENTATION (PART 2) ---
-        // Display the AI savings suggestion as the secondary metric.
         actualVsTargetLabel.textContent = "💡 AI Savings Suggestion";
         
         if (aiSavingsPlan && aiSavingsPlan.total > 0) {
@@ -1717,16 +1730,14 @@ function refreshSavingsHeader() {
             savingsActualEl.textContent = `All surplus is allocated.`;
         }
         
-        // Hide the indicator and top-up button as they are not relevant
         indContainer.style.display = 'none';
 
     } else {
-        // Original behavior: Compare actual savings to the target
         actualVsTargetLabel.textContent = "Actual Savings vs Target";
         savingsActualEl.textContent = fmtRM(actualSavings);
         savingsActualEl.dataset.value = actualSavings;
 
-        indContainer.style.display = 'flex'; // Ensure the container is visible
+        indContainer.style.display = 'flex';
         const ind = document.getElementById('savingsIndicator');
         const shortfall = target - actualSavings;
 
@@ -1741,8 +1752,6 @@ function refreshSavingsHeader() {
         }
     }
 }
-// --- [END] HYBRID/PATCHED refreshSavingsHeader FUNCTION ---
-
 function getNetIncome(otAmount, excludeClaims = false) {
     const claims = excludeClaims ? 0 : (salaryData.claims || 0);
     const gross = (salaryData.basic || 0) + claims + (salaryData.hpAllowance || 0) + (salaryData.incentive || 0) + (salaryData.bonus || 0) + (salaryData.otherIncome || 0) + otAmount;
@@ -1751,7 +1760,6 @@ function getNetIncome(otAmount, excludeClaims = false) {
     return gross - totalDeductions;
 }
 
-// --- [START] HYBRID/PATCHED updateDashboard FUNCTION ---
 function updateDashboard() {
     const prevPeriod = getPreviousMonthPeriod(currentPayPeriod);
     const prevOTEntries = JSON.parse(localStorage.getItem(`overtimeEntries_${prevPeriod}`) || '[]');
@@ -1780,13 +1788,10 @@ function updateDashboard() {
     const savingsGoalCard = document.getElementById('this-months-savings-goal');
     
     if (target > 0) {
-        // Original behavior: Show the user-defined target
         savingsGoalCard.querySelector(".card-title").textContent = "🎯 This Month's Savings Goal";
         savingsGoalCard.querySelector(".stat-label").textContent = "Target Savings";
         savingsTargetDisplayEl.textContent = fmtRM(target);
     } else {
-        // --- HYBRID IDEA IMPLEMENTATION (PART 1) ---
-        // Show projected savings as the main stat.
         savingsGoalCard.querySelector(".card-title").textContent = "💰 Savings Potential & AI Tip";
         savingsGoalCard.querySelector(".stat-label").textContent = "Projected Savings This Month";
         savingsTargetDisplayEl.textContent = fmtRM(netAfterExpenses);
@@ -1810,18 +1815,16 @@ function updateDashboard() {
     const monthSavedEl = document.getElementById('monthSaved');
     if (monthSavedEl) monthSavedEl.textContent = fmtRM(liveActualSavings);
     
-    const totalSinkingFundSavings = sinkingFunds.reduce((sum, fund) => sum + fund.savedAmount, 0);
+    const totalSinkingFundSavings = sinkingFunds.reduce((sum, fund) => sum + (fund.savedAmount || 0), 0);
     document.getElementById('sinkingFundsTotal').textContent = fmtRM(totalSinkingFundSavings);
     
-    const upcomingFunds = sinkingFunds.filter(f => new Date(f.dueDate) > new Date()).sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
+    const upcomingFunds = sinkingFunds.filter(f => !f.isArchived && new Date(f.dueDate) > new Date()).sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
     if (upcomingFunds.length > 0) {
         document.getElementById('nextGoalDue').textContent = `${upcomingFunds[0].name} (${upcomingFunds[0].dueDate})`;
     } else {
         document.getElementById('nextGoalDue').textContent = 'N/A';
     }
 }
-// --- [END] HYBRID/PATCHED updateDashboard FUNCTION ---
-
 function getHourlyRate() {
   if (!salaryData || !salaryData.basic) return 0;
   return (salaryData.basic / 26) / 8;
@@ -1946,7 +1949,7 @@ function runAICoach() {
 
     if (surplus <= 0) {
         coachSection.style.display = 'none';
-        aiSavingsPlan = { total: 0 }; // Reset the plan
+        aiSavingsPlan = { total: 0 };
         return;
     }
 
@@ -2038,7 +2041,7 @@ function exportData() {
     const dataToExport = {};
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key.startsWith('salaryData_') || key.startsWith('overtimeEntries_') || key.startsWith('expenses_') || key.startsWith('savingsGoalsData_') || key === 'recurringExpenses' || key === 'lastPayPeriod' || key === 'sinkingFunds') {
+        if (key.startsWith('salaryData_') || key.startsWith('overtimeEntries_') || key.startsWith('expenses_') || key.startsWith('savingsGoalsData_') || key.startsWith('budgets_') || key === 'recurringExpenses' || key === 'lastPayPeriod' || key === 'sinkingFunds' || key === 'savingsPots') {
             dataToExport[key] = localStorage.getItem(key);
         }
     }
@@ -2097,7 +2100,6 @@ function importData(event) {
     event.target.value = '';
 }
 
-// --- NEW: OT Import/Export Functions ---
 function exportOTEntries() {
     if (overtimeEntries.length === 0) {
         alert('No OT entries to export.');
@@ -2160,7 +2162,7 @@ function importOTEntries(event) {
         }
     };
     reader.readAsText(file);
-    event.target.value = ''; // Reset file input
+    event.target.value = '';
 }
 
 // --- RECURRING & EXCLUDE EXPENSES ---
@@ -2196,6 +2198,7 @@ function toggleExpenseExclusion(expenseId, isChecked) {
     saveDataForPeriod(currentPayPeriod);
     
     displayExpenses();
+    displayBudgets(); 
     updateDashboard();
     updateSummary();
     updateSavingsAnalysis();
@@ -2231,6 +2234,7 @@ function applyRecurringExpenses() {
     if (addedCount > 0) {
         saveDataForPeriod(currentPayPeriod);
         displayExpenses();
+        displayBudgets();
         updateDashboard();
         showToast(`${addedCount} recurring expense(s) applied for this month.`);
     } else {
@@ -2306,6 +2310,7 @@ function copyLastMonthExpenses(isSilent = false) {
 
         saveDataForPeriod(currentPayPeriod);
         displayExpenses();
+        displayBudgets();
         updateDashboard();
         if (!isSilent) showToast(`Expenses from ${prevPeriod} have been copied.`);
         return true;
@@ -2364,7 +2369,6 @@ function exportExpensesCSV() {
 function exportOvertimeCSV() {
     const filename = `overtime_${currentPayPeriod}.csv`;
     
-    // 1. Sort entries by date in ascending order
     const sortedEntries = [...overtimeEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
 
     const dataToExport = sortedEntries.map(e => ({
@@ -2373,14 +2377,12 @@ function exportOvertimeCSV() {
         StartTime: e.startTime || '',
         EndTime: e.endTime || '',
         Hours: e.hours.toFixed(2),
-        // 2. Add the new formatted duration column
         Duration: formatHoursDuration(e.hours),
         Rate: `${e.rate}x`,
         Earnings: e.amount.toFixed(2),
         Remarks: e.remarks || ''
     }));
 
-    // 3. Define headers explicitly to control column order
     const headers = ['Date', 'Day', 'StartTime', 'EndTime', 'Hours', 'Duration', 'Rate', 'Earnings', 'Remarks'];
 
     exportToCSV(dataToExport, filename, headers);
@@ -2410,11 +2412,10 @@ function closeSettleUp() {
     document.getElementById('settleup-modal').style.display = 'none';
 }
 
-// Helper function to create a summary card HTML string
 async function createSummaryCardImage(title, items, themeColor, pdf) {
     let itemHTML = '';
     items.forEach(item => {
-        const valueColor = item.valueColor || '#333'; // Default to dark grey
+        const valueColor = item.valueColor || '#333';
         itemHTML += `
             <div style="flex: 1; text-align: center;">
                 <div style="font-size: 24px; font-weight: bold; color: ${valueColor}; margin-bottom: 5px;">${item.value}</div>
@@ -2431,7 +2432,7 @@ async function createSummaryCardImage(title, items, themeColor, pdf) {
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             margin-bottom: 20px;
             text-align: center;
-            width: 720px; /* Fixed width for rendering */
+            width: 720px;
         ">
             <h3 style="font-size: 18px; color: ${themeColor}; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">${title}</h3>
             <div style="display: flex; justify-content: space-around; gap: 10px;">
@@ -2450,12 +2451,11 @@ async function createSummaryCardImage(title, items, themeColor, pdf) {
     const imgData = canvas.toDataURL('image/png');
     document.body.removeChild(tempDiv);
 
-    const imgWidth = pdf.internal.pageSize.getWidth() - 80; // Match PDF width minus margins
+    const imgWidth = pdf.internal.pageSize.getWidth() - 80;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
     return { imgData, imgWidth, imgHeight };
 }
 
-// --- NEW DETAILED PDF FUNCTIONS ---
 function launchDetailedPDFModal() {
     closeExportAsModal();
     const titleInput = document.getElementById('detailedReportTitle');
@@ -2473,7 +2473,6 @@ async function exportDetailedPDF() {
     const themeColor = document.getElementById('detailedThemeColor').value || '#667eea';
     const includeExcluded = document.getElementById('includeExcludedExpenses').checked;
 
-    // 1. Gather Data
     const prevPeriod = getPreviousMonthPeriod(currentPayPeriod);
     const prevOTEntries = JSON.parse(localStorage.getItem(`overtimeEntries_${prevPeriod}`) || '[]');
     const totalOT = prevOTEntries.reduce((sum, e) => sum + e.amount, 0);
@@ -2504,7 +2503,6 @@ async function exportDetailedPDF() {
         .map(([name, amount]) => `<li>${name.replace(/_/g, ' ')}: <strong>${fmtRM(amount)}</strong></li>`)
         .join('');
         
-    // 2. Create Hidden Div for Rendering
     const infographicContainer = document.createElement('div');
     infographicContainer.id = 'pdf-infographic-container';
     infographicContainer.style.cssText = `
@@ -2513,7 +2511,6 @@ async function exportDetailedPDF() {
         color: #333;
     `;
 
-    // 3. Build HTML Content for Infographic
     infographicContainer.innerHTML = `
         <style>
             #pdf-infographic-container h1, #pdf-infographic-container h2, #pdf-infographic-container h3 { margin: 0; padding: 0; }
@@ -2585,12 +2582,10 @@ async function exportDetailedPDF() {
     `;
     document.body.appendChild(infographicContainer);
 
-    // 4. Use html2canvas to render the infographic
     const canvas = await html2canvas(infographicContainer, { scale: 2 });
     const imgData = canvas.toDataURL('image/png');
     document.body.removeChild(infographicContainer);
 
-    // 5. Initialize jsPDF and add the infographic
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'pt', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -2600,14 +2595,12 @@ async function exportDetailedPDF() {
     
     pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
 
-    // 6. Add Overtime Details Table - Sorted by Date
     if (overtimeEntries.length > 0) {
         pdf.addPage();
         pdf.setFontSize(18);
         pdf.setTextColor(themeColor);
         pdf.text('Overtime Entry Details', 40, 60);
 
-        // OT Summary Card Data
         const totalOTHours = overtimeEntries.reduce((sum, e) => sum + e.hours, 0);
         const totalOTEarnings = overtimeEntries.reduce((sum, e) => sum + e.amount, 0);
         const averageHourlyRate = totalOTHours > 0 ? totalOTEarnings / totalOTHours : 0;
@@ -2624,7 +2617,7 @@ async function exportDetailedPDF() {
         const otBody = sortedOTEntries.map(e => [
             e.date,
             e.dayName,
-            `${e.startTime || ''} - ${e.endTime || ''}`, // Include start and end time
+            `${e.startTime || ''} - ${e.endTime || ''}`,
             e.hours.toFixed(2),
             `${e.rate}x`,
             fmtRM(e.amount),
@@ -2632,21 +2625,19 @@ async function exportDetailedPDF() {
         ]);
 
         pdf.autoTable({
-            head: [['Date', 'Day', 'Time', 'Hours', 'Rate', 'Earnings', 'Remarks']], // Updated head
+            head: [['Date', 'Day', 'Time', 'Hours', 'Rate', 'Earnings', 'Remarks']],
             body: otBody,
-            startY: otSummaryCard.imgHeight + 90, // Adjust startY after summary card
+            startY: otSummaryCard.imgHeight + 90,
             headStyles: { fillColor: themeColor }
         });
     }
 
-    // 7. Add Expenses Details Table - Sorted by current view and with option to exclude
     if (expensesForReport.length > 0) {
         pdf.addPage();
         pdf.setFontSize(18);
         pdf.setTextColor(themeColor);
         pdf.text('Expense Details', 40, 60);
 
-        // Expense Summary Card Data
         const expenseSummaryItems = [
             { value: fmtRM(totalMyShare), label: 'Your Share', valueColor: '#dc3545' },
             { value: fmtRM(totalPartnerShare), label: 'Partner\'s Share', valueColor: '#6c757d' },
@@ -2658,7 +2649,7 @@ async function exportDetailedPDF() {
         const expensesForTable = [...expensesForReport].sort((a, b) => {
             const valA = summaryView === 'my' ? a.myShare : a.fullAmount;
             const valB = summaryView === 'my' ? b.myShare : b.fullAmount;
-            return valB - valA; // Sort descending by amount
+            return valB - valA;
         });
 
         const expenseBody = expensesForTable.map(e => [
@@ -2673,17 +2664,15 @@ async function exportDetailedPDF() {
         pdf.autoTable({
             head: [['Date', 'Category', 'Description', 'My Share', 'Partner\'s Share', 'Full Amount']],
             body: expenseBody,
-            startY: expenseSummaryCard.imgHeight + 90, // Adjust startY after summary card
+            startY: expenseSummaryCard.imgHeight + 90,
             headStyles: { fillColor: themeColor }
         });
     }
     
-    // 8. Trigger Download
     pdf.save(`${reportTitle.replace(/ /g, '_')}.pdf`);
     closeDetailedPDFModal();
 }
 
-// --- NEW: Expenses Only PDF Functions ---
 function launchExpensesOnlyPDFModal() {
     closeExportAsModal();
     const titleInput = document.getElementById('expensesOnlyReportTitle');
@@ -2721,7 +2710,6 @@ async function exportExpensesOnlyPDF() {
         pdf.text('Expenses Tracker', 40, currentY);
         currentY += 20;
 
-        // Expense Summary Card Data
         const totalMyShare = expensesForReport.reduce((sum, e) => sum + e.myShare, 0);
         const totalPartnerShare = expensesForReport.reduce((sum, e) => sum + (e.partnerShare || 0), 0);
         const totalFullAmount = expensesForReport.reduce((sum, e) => sum + (e.fullAmount || 0), 0);
@@ -2739,7 +2727,7 @@ async function exportExpensesOnlyPDF() {
         const expensesForTable = [...expensesForReport].sort((a, b) => {
             const valA = summaryView === 'my' ? a.myShare : a.fullAmount;
             const valB = summaryView === 'my' ? b.myShare : b.fullAmount;
-            return valB - valA; // Sort descending by amount
+            return valB - valA;
         });
 
         const expenseBody = expensesForTable.map(e => [
@@ -2769,7 +2757,6 @@ async function exportExpensesOnlyPDF() {
     closeExpensesOnlyPDFModal();
 }
 
-// --- NEW: OT Only PDF Functions ---
 function launchOTOnlyPDFModal() {
     closeExportAsModal();
     const titleInput = document.getElementById('otOnlyReportTitle');
@@ -2804,7 +2791,6 @@ async function exportOTOnlyPDF() {
         pdf.text('Smart OT Allocator', 40, currentY);
         currentY += 20;
         
-        // OT Summary Card Data
         const totalOTHours = overtimeEntries.reduce((sum, e) => sum + e.hours, 0);
         const totalOTEarnings = overtimeEntries.reduce((sum, e) => sum + e.amount, 0);
         const averageHourlyRate = totalOTHours > 0 ? totalOTEarnings / totalOTHours : 0;
@@ -2853,6 +2839,7 @@ function addSinkingFund() {
     const name = document.getElementById('fundName').value;
     const totalAmount = parseFloat(document.getElementById('fundTotal').value);
     const dueDate = document.getElementById('fundDueDate').value;
+    const icon = document.getElementById('fundIcon').value;
 
     if (!name || !totalAmount || !dueDate) {
         alert('Please fill out all fields for the new goal.');
@@ -2862,10 +2849,13 @@ function addSinkingFund() {
     const newFund = {
         id: generateId(),
         name,
+        icon,
         totalAmount,
         dueDate,
         savedAmount: 0,
-        allocations: {}
+        allocations: {},
+        contributionHistory: [],
+        isArchived: false
     };
 
     sinkingFunds.push(newFund);
@@ -2880,79 +2870,107 @@ function addSinkingFund() {
 
 function displaySinkingFunds() {
     const container = document.getElementById('sinkingFundsContainer');
+    const archivedContainer = document.getElementById('archivedSinkingFundsContainer');
     container.innerHTML = '';
+    archivedContainer.innerHTML = '';
     
-    if (sinkingFunds.length === 0) {
-        container.innerHTML = '<p>No future goals added yet. Add one above to start planning!</p>';
-        return;
+    const activeFunds = sinkingFunds.filter(f => !f.isArchived);
+    const archivedFunds = sinkingFunds.filter(f => f.isArchived);
+
+    if (activeFunds.length === 0) {
+        container.innerHTML = '<p>No active goals. Add one above or unarchive a goal to start planning!</p>';
+    } else {
+        activeFunds.forEach(fund => renderSinkingFundCard(fund, container));
     }
 
-    sinkingFunds.forEach(fund => {
-        const today = new Date();
-        const due = new Date(fund.dueDate);
-        const monthsLeft = Math.max(0, (due.getFullYear() - today.getFullYear()) * 12 + (due.getMonth() - today.getMonth()));
-        const monthlyContribution = monthsLeft > 0 ? (fund.totalAmount - fund.savedAmount) / monthsLeft : (fund.totalAmount - fund.savedAmount);
-        const progress = fund.totalAmount > 0 ? (fund.savedAmount / fund.totalAmount) * 100 : 0;
-        
-        const hasAllocatedThisMonth = fund.allocations && fund.allocations[currentPayPeriod];
-
-        const allocationButtonHTML = hasAllocatedThisMonth
-            ? `<button class="btn btn-small btn-warning" onclick="unallocateContribution('${fund.id}')">Unallocate for ${currentPayPeriod}</button>`
-            : `<button class="btn btn-small" onclick="allocateContribution('${fund.id}')">Allocate ${fmtRM(monthlyContribution)}</button>`;
-
-        const card = document.createElement('div');
-        card.className = 'sinking-fund-card';
-        card.innerHTML = `
-            <h4>${fund.name}</h4>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: ${progress.toFixed(1)}%; background: linear-gradient(90deg, #20c997, #28a745);">${progress.toFixed(1)}%</div>
-            </div>
-            <div class="sinking-fund-details">
-                <span>Saved: <strong>${fmtRM(fund.savedAmount)} / ${fmtRM(fund.totalAmount)}</strong></span>
-                <span>Due: <strong>${fund.dueDate}</strong></span>
-            </div>
-            <div class="sinking-fund-details">
-                <span>Monthly: <strong>${fmtRM(monthlyContribution)}</strong></span>
-                <span>Months Left: <strong>${monthsLeft}</strong></span>
-            </div>
-            <div class="sinking-fund-actions">
-                ${allocationButtonHTML}
-                <button class="btn btn-small btn-secondary" onclick="openSinkingFundEditModal('${fund.id}')">Edit</button>
-                <button class="btn btn-small btn-danger" onclick="deleteSinkingFund('${fund.id}')">Delete</button>
-            </div>
-        `;
-        container.appendChild(card);
-    });
+    if (showArchived) {
+        if (archivedFunds.length === 0) {
+            archivedContainer.innerHTML = '<p>No archived goals.</p>';
+        } else {
+            archivedFunds.forEach(fund => renderSinkingFundCard(fund, archivedContainer));
+        }
+        archivedContainer.style.display = 'grid';
+    } else {
+        archivedContainer.style.display = 'none';
+    }
 }
 
-function allocateContribution(fundId) {
-    const fundIndex = sinkingFunds.findIndex(f => f.id === fundId);
-    if (fundIndex === -1) return;
-
-    const fund = sinkingFunds[fundIndex];
+// UPDATED: renderSinkingFundCard now shows Allocate/Unallocate buttons
+function renderSinkingFundCard(fund, container) {
     const today = new Date();
     const due = new Date(fund.dueDate);
-    const monthsLeft = Math.max(1, (due.getFullYear() - today.getFullYear()) * 12 + (due.getMonth() - today.getMonth()));
-    const monthlyContribution = (fund.totalAmount - fund.savedAmount) / monthsLeft;
+    const monthsLeft = Math.max(0, (due.getFullYear() - today.getFullYear()) * 12 + (due.getMonth() - today.getMonth()));
+    const remaining = fund.totalAmount - (fund.savedAmount || 0);
+    const monthlyContribution = monthsLeft > 0 ? remaining / monthsLeft : remaining;
+    const progress = fund.totalAmount > 0 ? ((fund.savedAmount || 0) / fund.totalAmount) * 100 : 0;
+    
+    const hasAllocatedThisMonth = fund.allocations && fund.allocations[currentPayPeriod];
 
-    if (monthlyContribution <= 0) {
-        showToast("This goal is already fully funded!", "warning");
-        return;
-    }
+    const card = document.createElement('div');
+    card.className = `sinking-fund-card ${fund.isArchived ? 'is-archived' : ''}`;
+    card.innerHTML = `
+        <h4><span class="icon">${fund.icon || '💰'}</span> ${fund.name}</h4>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: ${progress.toFixed(1)}%; background: linear-gradient(90deg, #20c997, #28a745);">${progress.toFixed(1)}%</div>
+        </div>
+        <div class="sinking-fund-details">
+            <span>Saved: <strong>${fmtRM(fund.savedAmount || 0)} / ${fmtRM(fund.totalAmount)}</strong></span>
+            <span>Due: <strong>${fund.dueDate}</strong></span>
+        </div>
+        <div class="sinking-fund-details">
+            <span>Monthly: <strong>${fmtRM(monthlyContribution)}</strong></span>
+            <span>Months Left: <strong>${monthsLeft}</strong></span>
+        </div>
+        <div class="sinking-fund-actions">
+            ${!fund.isArchived ? `
+                ${hasAllocatedThisMonth 
+                    ? `<button class="btn btn-small btn-danger" onclick="unallocateContribution('${fund.id}')">Unallocate</button>`
+                    : `<button class="btn btn-small btn-success" onclick="allocateSingleGoal('${fund.id}')">✅ Allocate</button>`
+                }
+                <button class="btn btn-small" onclick="launchExtraContributionModal('${fund.id}')">+ Add Extra</button>
+                <button class="btn btn-small btn-info" onclick="displayContributionHistory('${fund.id}')">History</button>
+                <button class="btn btn-small btn-secondary" onclick="openSinkingFundEditModal('${fund.id}')">Edit</button>
+                <button class="btn btn-small btn-warning" onclick="toggleArchiveGoal('${fund.id}')">Archive</button>
+            ` : `
+                <button class="btn btn-small btn-success" onclick="toggleArchiveGoal('${fund.id}')">Unarchive</button>
+                <button class="btn btn-small btn-info" onclick="displayContributionHistory('${fund.id}')">History</button>
+                <button class="btn btn-small btn-danger" onclick="deleteSinkingFund('${fund.id}')">Delete</button>
+            `}
+        </div>
+    `;
+    container.appendChild(card);
+}
 
-    fund.savedAmount = round2(fund.savedAmount + monthlyContribution);
+
+function allocateContribution(fundId, amount, type = 'monthly', description = '') {
+    const fundIndex = sinkingFunds.findIndex(f => f.id === fundId);
+    if (fundIndex === -1) return false;
+
+    const fund = sinkingFunds[fundIndex];
+    if (amount <= 0) return false;
+    
+    fund.savedAmount = round2((fund.savedAmount || 0) + amount);
     if (!fund.allocations) fund.allocations = {};
-    fund.allocations[currentPayPeriod] = true;
+    if (type === 'monthly') {
+        fund.allocations[currentPayPeriod] = true;
+    }
+    
+    if (!fund.contributionHistory) fund.contributionHistory = [];
+    fund.contributionHistory.push({
+        date: new Date().toISOString().split('T')[0],
+        amount,
+        type,
+        description: description || `Sinking Fund: ${fund.name}`
+    });
 
-    const expenseDate = `${currentPayPeriod}-01`;
     const newExpense = {
         id: generateId(),
-        date: expenseDate,
+        date: `${currentPayPeriod}-01`,
         category: 'savings_investments',
-        myShare: monthlyContribution,
+        myShare: amount,
         partnerShare: 0,
-        fullAmount: monthlyContribution,
-        description: `Sinking Fund: ${fund.name}`,
+        fullAmount: amount,
+        description: description || `Sinking Fund: ${fund.name}`,
         isRecurring: false,
         splitProfile: 'mine100',
         isExcluded: false,
@@ -2960,51 +2978,81 @@ function allocateContribution(fundId) {
         fundId: fund.id
     };
     expenses.push(newExpense);
-
-    saveDataForPeriod(currentPayPeriod);
-    updateAllDisplays();
-    showToast(`Contribution for "${fund.name}" allocated!`);
+    return true;
 }
 
-function unallocateContribution(fundId) {
-    const fundIndex = sinkingFunds.findIndex(f => f.id === fundId);
-    if (fundIndex === -1) return;
 
-    if (!confirm("This will remove the contribution from this fund and delete the corresponding expense entry for this month. Continue?")) {
+// NEW: Function to unallocate a contribution
+function unallocateContribution(fundId) {
+    if (!confirm("Are you sure you want to unallocate this month's contribution? This will remove the saved amount and the corresponding expense record.")) {
         return;
     }
 
+    const fundIndex = sinkingFunds.findIndex(f => f.id === fundId);
+    if (fundIndex === -1) {
+        console.error("Fund not found for unallocation");
+        return;
+    }
     const fund = sinkingFunds[fundIndex];
 
-    const expenseIndex = expenses.findIndex(exp =>
-        exp.isSinkingFund === true &&
-        exp.fundId === fundId &&
-        exp.date.startsWith(currentPayPeriod)
+    const expenseIndex = expenses.findIndex(e => 
+        e.isSinkingFund && 
+        e.fundId === fundId && 
+        e.description === `Sinking Fund: ${fund.name}`
     );
-
+    
     if (expenseIndex === -1) {
-        alert("Error: Could not find the original expense entry to remove. Unallocation failed. Please check your expenses manually.");
+        showToast("Could not find the associated expense to remove.", "danger");
+        delete fund.allocations[currentPayPeriod];
+        saveDataForPeriod(currentPayPeriod);
+        updateAllDisplays();
         return;
     }
-    
-    const amountToUnallocate = expenses[expenseIndex].myShare;
 
+    const amountToUnallocate = expenses[expenseIndex].myShare;
     expenses.splice(expenseIndex, 1);
 
     fund.savedAmount = round2(fund.savedAmount - amountToUnallocate);
-    if (fund.savedAmount < 0) fund.savedAmount = 0;
-    
-    if (fund.allocations && fund.allocations[currentPayPeriod]) {
-        delete fund.allocations[currentPayPeriod];
-    }
+    delete fund.allocations[currentPayPeriod];
 
+    const historyIndex = fund.contributionHistory.map(h => h.type === 'monthly' && h.amount === amountToUnallocate).lastIndexOf(true);
+    if (historyIndex > -1) {
+        fund.contributionHistory.splice(historyIndex, 1);
+    }
+    
     saveDataForPeriod(currentPayPeriod);
     updateAllDisplays();
-    showToast(`Contribution for "${fund.name}" has been unallocated.`);
+    showToast(`Unallocated ${fmtRM(amountToUnallocate)} from "${fund.name}".`);
 }
 
+// NEW: Function to allocate a single goal
+function allocateSingleGoal(fundId) {
+    const fund = sinkingFunds.find(f => f.id === fundId);
+    if (!fund) return;
+    
+    const today = new Date();
+    const due = new Date(fund.dueDate);
+    const monthsLeft = Math.max(1, (due.getFullYear() - today.getFullYear()) * 12 + (due.getMonth() - today.getMonth()));
+    const remaining = fund.totalAmount - (fund.savedAmount || 0);
+    const monthlyContribution = remaining > 0 && monthsLeft > 0 ? round2(remaining / monthsLeft) : 0;
+    
+    if (monthlyContribution <= 0) {
+        showToast("This goal is already fully funded or has no amount remaining!", "info");
+        return;
+    }
+
+    if (confirm(`This will allocate ${fmtRM(monthlyContribution)} to "${fund.name}" for this month. Continue?`)) {
+        if (allocateContribution(fund.id, monthlyContribution, 'monthly')) {
+            saveDataForPeriod(currentPayPeriod);
+            updateAllDisplays();
+            showToast(`Allocated ${fmtRM(monthlyContribution)} to "${fund.name}"!`);
+        }
+    }
+}
+
+
 function deleteSinkingFund(fundId) {
-    if (confirm("Are you sure you want to delete this goal? This cannot be undone.")) {
+    if (confirm("Are you sure you want to permanently delete this goal? This cannot be undone.")) {
         sinkingFunds = sinkingFunds.filter(f => f.id !== fundId);
         saveDataForPeriod(currentPayPeriod);
         updateAllDisplays();
@@ -3023,6 +3071,7 @@ function openSinkingFundEditModal(id) {
     document.getElementById('fundEditId').value = id;
     document.getElementById('fundEditName').value = fund.name;
     document.getElementById('fundEditTotal').value = fund.totalAmount;
+    document.getElementById('fundEditIcon').value = fund.icon || '💰';
     fundEditDueDatePicker.setDate(fund.dueDate, false);
     
     document.getElementById('sinking-fund-edit-modal').style.display = 'flex';
@@ -3036,6 +3085,7 @@ function saveSinkingFundFromModal() {
     const name = document.getElementById('fundEditName').value;
     const totalAmount = parseFloat(document.getElementById('fundEditTotal').value) || 0;
     const dueDate = document.getElementById('fundEditDueDate').value;
+    const icon = document.getElementById('fundEditIcon').value;
 
     if (!name || !totalAmount || !dueDate) {
         alert('Please fill out all fields.');
@@ -3045,6 +3095,7 @@ function saveSinkingFundFromModal() {
     sinkingFunds[fundIndex].name = name;
     sinkingFunds[fundIndex].totalAmount = totalAmount;
     sinkingFunds[fundIndex].dueDate = dueDate;
+    sinkingFunds[fundIndex].icon = icon;
 
     if (sinkingFunds[fundIndex].savedAmount > totalAmount) {
         sinkingFunds[fundIndex].savedAmount = totalAmount;
@@ -3055,6 +3106,114 @@ function saveSinkingFundFromModal() {
     updateAllDisplays();
     closeSinkingFundEditModal();
     showToast('Goal details updated successfully!');
+}
+
+function allocateAllGoals() {
+    if (!confirm("This will allocate the suggested monthly contribution to all active, unallocated goals for this month. Continue?")) return;
+    
+    let allocatedCount = 0;
+    const activeFunds = sinkingFunds.filter(f => !f.isArchived && !(f.allocations && f.allocations[currentPayPeriod]));
+
+    activeFunds.forEach(fund => {
+        const today = new Date();
+        const due = new Date(fund.dueDate);
+        const monthsLeft = Math.max(1, (due.getFullYear() - today.getFullYear()) * 12 + (due.getMonth() - today.getMonth()));
+        const remaining = fund.totalAmount - (fund.savedAmount || 0);
+        const monthlyContribution = remaining > 0 && monthsLeft > 0 ? round2(remaining / monthsLeft) : 0;
+        
+        if (monthlyContribution > 0) {
+            if (allocateContribution(fund.id, monthlyContribution, 'monthly')) {
+                allocatedCount++;
+            }
+        }
+    });
+
+    if (allocatedCount > 0) {
+        saveDataForPeriod(currentPayPeriod);
+        updateAllDisplays();
+        showToast(`${allocatedCount} goal(s) have been funded for this month!`);
+    } else {
+        showToast("All active goals are already funded for this month.", "info");
+    }
+}
+
+function launchExtraContributionModal(fundId) {
+    document.getElementById('fundExtraContributionId').value = fundId;
+    const fund = sinkingFunds.find(f => f.id === fundId);
+    if(fund) {
+         document.getElementById('extraContributionTitle').textContent = `Add to "${fund.name}"`;
+    }
+    document.getElementById('extra-contribution-modal').style.display = 'flex';
+}
+function closeExtraContributionModal() {
+    document.getElementById('extra-contribution-modal').style.display = 'none';
+    document.getElementById('fundExtraAmount').value = '';
+    document.getElementById('fundExtraDescription').value = '';
+}
+function addExtraContribution() {
+    const fundId = document.getElementById('fundExtraContributionId').value;
+    const amount = parseFloat(document.getElementById('fundExtraAmount').value);
+    const description = document.getElementById('fundExtraDescription').value;
+
+    if (!amount || amount <= 0) {
+        alert("Please enter a valid amount.");
+        return;
+    }
+    
+    if (allocateContribution(fundId, amount, 'extra', description)) {
+        saveDataForPeriod(currentPayPeriod);
+        updateAllDisplays();
+        showToast(`Extra contribution of ${fmtRM(amount)} added!`);
+        closeExtraContributionModal();
+    }
+}
+
+function displayContributionHistory(fundId) {
+    const fund = sinkingFunds.find(f => f.id === fundId);
+    if (!fund) return;
+    
+    const contentDiv = document.getElementById('contributionHistoryContent');
+    document.getElementById('contributionHistoryTitle').textContent = `History for "${fund.name}"`;
+    contentDiv.innerHTML = '';
+
+    if (!fund.contributionHistory || fund.contributionHistory.length === 0) {
+        contentDiv.innerHTML = '<p>No contributions have been recorded for this goal yet.</p>';
+    } else {
+        const list = document.createElement('ul');
+        [...fund.contributionHistory].reverse().forEach(entry => {
+            const item = document.createElement('li');
+            item.innerHTML = `
+                <div>
+                    <div class="history-meta">${entry.date} - ${entry.type}</div>
+                    <div>${entry.description}</div>
+                </div>
+                <div class="history-amount">${fmtRM(entry.amount)}</div>
+            `;
+            list.appendChild(item);
+        });
+        contentDiv.appendChild(list);
+    }
+
+    document.getElementById('contribution-history-modal').style.display = 'flex';
+}
+function closeContributionHistoryModal() {
+    document.getElementById('contribution-history-modal').style.display = 'none';
+}
+
+function toggleArchiveGoal(fundId) {
+    const fundIndex = sinkingFunds.findIndex(f => f.id === fundId);
+    if (fundIndex === -1) return;
+    
+    sinkingFunds[fundIndex].isArchived = !sinkingFunds[fundIndex].isArchived;
+    saveDataForPeriod(currentPayPeriod);
+    displaySinkingFunds();
+    showToast(`Goal ${sinkingFunds[fundIndex].isArchived ? 'archived' : 'unarchived'}.`);
+}
+
+function toggleShowArchived() {
+    showArchived = !showArchived;
+    document.getElementById('toggleArchivedBtn').textContent = showArchived ? '🙈 Hide Archived' : '👁️ Show Archived';
+    displaySinkingFunds();
 }
 
 
@@ -3136,7 +3295,7 @@ function planOTForTarget() {
     }
 
     const otRequired = shortfall;
-    const hoursNeeded = otRequired / (hourlyRate * 1.5); // Assume average rate
+    const hoursNeeded = otRequired / (hourlyRate * 1.5);
 
     if (confirm(`To cover the ${fmtRM(shortfall)} shortfall next month, you'll need to plan for approximately ${hoursNeeded.toFixed(1)} more hours of OT this period. Would you like to add this to your OT target?`)) {
          const targetInput = document.getElementById('targetOTEarnings');
@@ -3228,10 +3387,251 @@ function runMiniSimulator() {
     resultDiv.innerHTML = `By reducing spending by <strong>${fmtRM(reductionAmount)}</strong>, you will only need <strong>${fmtRM(newOtRequired)}</strong> of OT, which is about <strong>${newHoursNeeded.toFixed(1)} hours</strong>.`;
 }
 
+// --- SAVINGS POTS ---
+function addSavingsPot() {
+    const name = document.getElementById('potName').value;
+    const totalAmount = parseFloat(document.getElementById('potTotal').value);
+
+    if (!name || !totalAmount) {
+        alert('Please provide a name and target amount for the pot.');
+        return;
+    }
+    savingsPots.push({
+        id: generateId(),
+        name,
+        totalAmount,
+        savedAmount: 0
+    });
+    saveDataForPeriod(currentPayPeriod);
+    displaySavingsPots();
+    document.getElementById('potName').value = '';
+    document.getElementById('potTotal').value = '';
+}
+function displaySavingsPots() {
+    const container = document.getElementById('savingsPotsContainer');
+    container.innerHTML = '';
+    if (savingsPots.length === 0) {
+        container.innerHTML = '<p>No savings pots created yet. Add one to start saving for smaller goals!</p>';
+        return;
+    }
+    savingsPots.forEach(pot => {
+        const progress = pot.totalAmount > 0 ? (pot.savedAmount / pot.totalAmount) * 100 : 0;
+        const card = document.createElement('div');
+        card.className = 'sinking-fund-card';
+        card.innerHTML = `
+            <h4>🍯 ${pot.name}</h4>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: ${progress.toFixed(1)}%;">${progress.toFixed(1)}%</div>
+            </div>
+            <div class="sinking-fund-details">
+                <span>Saved: <strong>${fmtRM(pot.savedAmount)} / ${fmtRM(pot.totalAmount)}</strong></span>
+            </div>
+            <div class="sinking-fund-actions">
+                <button class="btn btn-small btn-success" onclick="launchAddFundsToPotModal('${pot.id}')">+ Add Funds</button>
+                <button class="btn btn-small btn-danger" onclick="deleteSavingsPot('${pot.id}')">Delete</button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+function launchAddFundsToPotModal(potId) {
+    document.getElementById('potAddFundsId').value = potId;
+    const pot = savingsPots.find(p => p.id === potId);
+    if (pot) {
+        document.getElementById('addFundsToPotTitle').textContent = `Add Funds to "${pot.name}"`;
+    }
+    document.getElementById('add-funds-pot-modal').style.display = 'flex';
+}
+function closeAddFundsToPotModal() {
+    document.getElementById('add-funds-pot-modal').style.display = 'none';
+    document.getElementById('potAddFundsAmount').value = '';
+}
+function addFundsToPot() {
+    const potId = document.getElementById('potAddFundsId').value;
+    const amount = parseFloat(document.getElementById('potAddFundsAmount').value);
+    const potIndex = savingsPots.findIndex(p => p.id === potId);
+
+    if (potIndex === -1 || !amount || amount <= 0) {
+        alert('Invalid amount or pot not found.');
+        return;
+    }
+
+    savingsPots[potIndex].savedAmount = round2(savingsPots[potIndex].savedAmount + amount);
+    
+    const newExpense = {
+        id: generateId(),
+        date: new Date().toISOString().split('T')[0],
+        category: 'savings_investments',
+        myShare: amount, partnerShare: 0, fullAmount: amount,
+        description: `Contribution to Pot: ${savingsPots[potIndex].name}`,
+        isRecurring: false, splitProfile: 'mine100', isExcluded: false
+    };
+    expenses.push(newExpense);
+    
+    saveDataForPeriod(currentPayPeriod);
+    updateAllDisplays();
+    closeAddFundsToPotModal();
+    showToast(`${fmtRM(amount)} added to "${savingsPots[potIndex].name}"!`);
+}
+function deleteSavingsPot(potId) {
+    if (confirm("Are you sure you want to delete this savings pot?")) {
+        savingsPots = savingsPots.filter(p => p.id !== potId);
+        saveDataForPeriod(currentPayPeriod);
+        displaySavingsPots();
+    }
+}
+function logSavingsAsExpense() {
+    const prevPeriod = getPreviousMonthPeriod(currentPayPeriod);
+    const prevOTEntries = JSON.parse(localStorage.getItem(`overtimeEntries_${prevPeriod}`) || '[]');
+    const totalOT = prevOTEntries.reduce((sum, e) => sum + e.amount, 0);
+    const netIncome = getNetIncome(totalOT, false);
+    const totalMyShare = expenses.filter(e => !e.isExcluded).reduce((sum, e) => sum + e.myShare, 0);
+    const surplus = netIncome - totalMyShare;
+
+    if (surplus <= 0) {
+        alert("There is no surplus to log this month.");
+        return;
+    }
+    
+    const existingLog = expenses.find(e => e.description === 'Logged Monthly Savings');
+    if (existingLog) {
+        if (!confirm("You've already logged your savings this month. Do you want to overwrite it with the new surplus amount?")) {
+            return;
+        }
+        existingLog.myShare = surplus;
+        existingLog.fullAmount = surplus;
+    } else {
+        const newExpense = {
+            id: generateId(),
+            date: `${currentPayPeriod}-${new Date(currentPayPeriod + '-01T12:00:00Z').getUTCDate()}`,
+            category: 'savings_investments',
+            myShare: surplus, partnerShare: 0, fullAmount: surplus,
+            description: 'Logged Monthly Savings',
+            isRecurring: false, splitProfile: 'mine100', isExcluded: false
+        };
+        expenses.push(newExpense);
+    }
+    
+    saveDataForPeriod(currentPayPeriod);
+    updateAllDisplays();
+    showToast(`Surplus of ${fmtRM(surplus)} has been logged as a savings expense.`);
+}
+
+// --- BUDGETING FUNCTIONS ---
+const debouncedSaveBudget = debounce((category, value) => {
+    const amount = parseFloat(value) || 0;
+    budgets[category] = amount;
+    saveDataForPeriod(currentPayPeriod);
+    displayBudgets(); 
+}, 500);
+
+function saveBudget(category, value) {
+    debouncedSaveBudget(category, value);
+}
+
+function displayBudgets() {
+    const container = document.getElementById('budgetContainer');
+    const summaryContainer = document.getElementById('budgetSummary');
+    container.innerHTML = '';
+    summaryContainer.innerHTML = '';
+
+    const categorySelect = document.getElementById('expenseCategory');
+    const categories = Array.from(categorySelect.options);
+
+    let totalBudgeted = 0;
+    let totalSpent = 0;
+    
+    const categorySpending = expenses
+        .filter(e => !e.isExcluded)
+        .reduce((acc, expense) => {
+            acc[expense.category] = (acc[expense.category] || 0) + expense.myShare;
+            return acc;
+        }, {});
+
+    categories.forEach(option => {
+        const category = option.value;
+        const categoryName = option.textContent.substring(2);
+        const budgetAmount = budgets[category] || 0;
+        const spentAmount = categorySpending[category] || 0;
+
+        totalBudgeted += budgetAmount;
+        totalSpent += spentAmount;
+        
+        const remaining = budgetAmount - spentAmount;
+        const progress = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
+        
+        let statusClass = 'good';
+        if (progress > 100) statusClass = 'over';
+        else if (progress > 75) statusClass = 'warning';
+
+        const card = document.createElement('div');
+        card.className = 'budget-card';
+        card.innerHTML = `
+            <div class="budget-card-header">
+                <h5>${option.textContent}</h5>
+                <input 
+                    type="number" 
+                    class="form-group budget-input" 
+                    placeholder="Set Budget" 
+                    value="${budgetAmount > 0 ? budgetAmount : ''}"
+                    oninput="saveBudget('${category}', this.value)"
+                >
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill status-${statusClass}" style="width: ${Math.min(progress, 100)}%;">
+                    ${progress.toFixed(0)}%
+                </div>
+            </div>
+            <div class="budget-details">
+                <span>Spent: ${fmtRM(spentAmount)} of ${fmtRM(budgetAmount)}</span>
+                <span class="budget-status ${remaining >= 0 ? 'remaining' : 'overspent'}">
+                    ${remaining >= 0 ? fmtRM(remaining) + ' left' : fmtRM(Math.abs(remaining)) + ' over'}
+                </span>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+
+    const remainingOverall = totalBudgeted - totalSpent;
+    summaryContainer.innerHTML = `
+        <div class="summary-item">
+            <div class="stat-label">Total Budgeted</div>
+            <div style="font-size: 1.8em; font-weight: bold; color: #17a2b8;">${fmtRM(totalBudgeted)}</div>
+        </div>
+        <div class="summary-item">
+            <div class="stat-label">Total Spent</div>
+            <div style="font-size: 1.8em; font-weight: bold; color: #dc3545;">${fmtRM(totalSpent)}</div>
+        </div>
+        <div class="summary-item">
+            <div class="stat-label">Remaining</div>
+            <div style="font-size: 1.8em; font-weight: bold; color: ${remainingOverall >= 0 ? '#28a745' : '#dc3545'};">
+                ${fmtRM(remainingOverall)}
+            </div>
+        </div>
+    `;
+}
+
+function copyLastMonthBudgets() {
+    const prevPeriod = getPreviousMonthPeriod(currentPayPeriod);
+    const prevBudgets = localStorage.getItem(`budgets_${prevPeriod}`);
+
+    if (!prevBudgets) {
+        alert(`No budget data found for the previous month (${prevPeriod}).`);
+        return;
+    }
+
+    if (confirm(`This will overwrite your current budgets for this month with the data from ${prevPeriod}. Continue?`)) {
+        budgets = JSON.parse(prevBudgets);
+        saveDataForPeriod(currentPayPeriod);
+        displayBudgets();
+        showToast(`Budgets from ${prevPeriod} have been copied.`);
+    }
+}
+
 
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('import-file').addEventListener('change', importData);
-    document.getElementById('import-ot-file').addEventListener('change', importOTEntries); // Added event listener for OT import
+    document.getElementById('import-ot-file').addEventListener('change', importOTEntries);
     
     document.getElementById('targetSavings').addEventListener('input', updateAndSaveSavingsGoals);
     document.getElementById('emergencyFundGoal').addEventListener('input', updateAndSaveSavingsGoals);

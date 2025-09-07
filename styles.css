@@ -363,9 +363,9 @@ tr.excluded-expense .split-pill {
 
 .progress-bar {
     width: 100%;
-    height: 30px;
+    height: 25px;
     background: #e0e0e0;
-    border-radius: 15px;
+    border-radius: 12.5px;
     overflow: hidden;
     margin: 10px 0;
     transition: background-color 0.3s ease;
@@ -374,13 +374,17 @@ tr.excluded-expense .split-pill {
 .progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #667eea, #764ba2);
-    transition: width 0.5s ease;
+    transition: width 0.5s ease, background 0.5s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
     font-weight: bold;
+    font-size: 0.8em;
 }
+.progress-fill.status-good { background: linear-gradient(90deg, #28a745, #20c997); }
+.progress-fill.status-warning { background: linear-gradient(90deg, #ffc107, #ff9800); color: #333; }
+.progress-fill.status-over { background: linear-gradient(90deg, #dc3545, #e91e63); }
 
 .expense-category, .split-pill {
     display: inline-block;
@@ -614,7 +618,7 @@ tr.excluded-expense .split-pill {
     color: #333;
 }
 
-/* --- SINKING FUNDS STYLES --- */
+/* --- SINKING FUNDS & SAVINGS POTS STYLES --- */
 .sinking-funds-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -628,9 +632,24 @@ tr.excluded-expense .split-pill {
     flex-direction: column;
     gap: 10px;
 }
+.sinking-fund-card.is-archived {
+    opacity: 0.6;
+    background-color: #f8f9fa;
+}
+.archived-grid {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px dashed #ccc;
+}
 .sinking-fund-card h4 {
     font-size: 1.2em;
     color: #333;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.sinking-fund-card h4 .icon {
+    font-size: 1.5em;
 }
 .sinking-fund-details {
     display: flex;
@@ -640,13 +659,36 @@ tr.excluded-expense .split-pill {
 }
 .sinking-fund-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: auto;
     padding-top: 10px;
 }
 .sinking-fund-actions .btn {
-    flex: 1;
+    flex: 1 1 auto;
     margin: 0;
+}
+#contributionHistoryContent ul {
+    list-style-type: none;
+    padding: 0;
+    max-height: 400px;
+    overflow-y: auto;
+}
+#contributionHistoryContent li {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+}
+#contributionHistoryContent li:last-child {
+    border-bottom: none;
+}
+#contributionHistoryContent .history-meta {
+    font-size: 0.9em;
+    color: #666;
+}
+#contributionHistoryContent .history-amount {
+    font-weight: bold;
 }
 
 /* --- AI COACH STYLES --- */
@@ -795,6 +837,52 @@ tr.excluded-expense .split-pill {
     background: rgba(255, 255, 255, 0.5);
 }
 
+/* --- NEW: BUDGETING TAB STYLES --- */
+.budget-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+.budget-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.budget-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+.budget-card-header h5 {
+    font-size: 1.1em;
+    flex-grow: 1;
+    text-transform: capitalize;
+}
+.budget-card-header .budget-input {
+    width: 100px;
+    text-align: right;
+}
+.budget-details {
+    font-size: 0.9em;
+    color: #555;
+}
+.budget-status {
+    font-weight: bold;
+    text-align: right;
+}
+.budget-status.remaining {
+    color: #28a745;
+}
+.budget-status.overspent {
+    color: #dc3545;
+}
+
+
 /* ---------------------------------
    DARK THEME STYLES - CONTRAST FIX
 --------------------------------- */
@@ -809,7 +897,8 @@ body.dark-theme .header {
 body.dark-theme h1,
 body.dark-theme h2,
 body.dark-theme h3,
-body.dark-theme h4 {
+body.dark-theme h4,
+body.dark-theme h5 {
     color: #ecf0f1;
 }
 body.dark-theme .header h1 {
@@ -820,9 +909,11 @@ body.dark-theme .form-section,
 body.dark-theme .ot-preview-item,
 body.dark-theme .modal-content,
 body.dark-theme .mini-simulator,
-body.dark-theme .sinking-fund-card {
+body.dark-theme .sinking-fund-card,
+body.dark-theme .budget-card {
     background: #2c3e50;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    border-color: #44617a;
 }
 body.dark-theme .stat-label,
 body.dark-theme .form-group label,
@@ -936,6 +1027,12 @@ body.dark-theme #netIncome {
 body.dark-theme #otPaidThisMonth {
     color: #9f7aea !important; /* Brighter Purple */
 }
+body.dark-theme .sinking-fund-card.is-archived {
+    background-color: #212f3d;
+}
+body.dark-theme #contributionHistoryContent li {
+    border-bottom-color: #34495e;
+}
 
 
 /* --- Summary Dashboard Dark Mode Fixes --- */
@@ -951,6 +1048,15 @@ body.dark-theme #summary-tab h4 {
 
 body.dark-theme #summary-tab .summary-item [style*="font-weight: bold"] {
     color: #ecf0f1; /* Bright white for main values */
+}
+body.dark-theme .budget-details {
+    color: #abb8c3;
+}
+body.dark-theme .budget-status.remaining {
+    color: #68d391;
+}
+body.dark-theme .budget-status.overspent {
+    color: #fc8181;
 }
 
 /* Specific color overrides for better contrast on the summary page */
