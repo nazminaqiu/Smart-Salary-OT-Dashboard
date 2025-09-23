@@ -395,6 +395,12 @@ tr.excluded-expense .split-pill {
     text-transform: capitalize;
 }
 
+/* This new rule provides a default style for ALL categories */
+.expense-category {
+    background: #6c757d; /* Neutral gray fallback */
+    color: white;
+}
+
 .split-pill {
     font-weight: 500;
     background-color: #e9ecef;
@@ -1077,4 +1083,138 @@ body.dark-theme #savingsRate { color: #ecf0f1 !important; } /* White for savings
     .dashboard {
         grid-template-columns: 1fr;
     }
+}
+
+/* --- NEW: BUDGETING TAB ENHANCEMENTS --- */
+.budget-controls {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+    margin-top: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e0e0e0;
+    flex-wrap: wrap;
+}
+.add-budget-group {
+    display: flex;
+    gap: 10px;
+}
+.add-budget-group select {
+    flex-grow: 1;
+}
+
+.budget-card.unbudgeted {
+    border-color: #ffc107;
+    background-color: #fff3cd;
+}
+.budget-card.unbudgeted h5 {
+    color: #856404;
+}
+
+body.dark-theme .budget-controls {
+    border-bottom-color: #44617a;
+}
+body.dark-theme .budget-card.unbudgeted {
+    border-color: #dd6b20;
+    background-color: #4c3216; /* Darker orange background */
+}
+body.dark-theme .budget-card.unbudgeted h5,
+body.dark-theme .budget-card.unbudgeted .budget-details {
+    color: #feebc8; /* Brighter text for dark bg */
+}
+
+/* --- Manage Categories Modal Enhancements --- */
+#manage-categories-modal .modal-content {
+    max-width: 700px; /* Make the modal wider */
+}
+#customCategoriesList {
+    margin-top: 15px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 5px;
+}
+.custom-category-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-radius: 5px;
+}
+.custom-category-item:hover {
+    background: #f8f9fa;
+}
+
+.add-category-form {
+    display: grid;
+    grid-template-columns: 3fr 1fr 1fr;
+    gap: 15px;
+    align-items: flex-end;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+.icon-picker-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px; /* Match input height */
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1.5em;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+.icon-picker-display:hover {
+    border-color: #667eea;
+}
+.icon-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed #ccc;
+}
+.icon-preset {
+    font-size: 1.8em;
+    padding: 5px;
+    text-align: center;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.icon-preset:hover {
+    background-color: #f0f0f0;
+    transform: scale(1.1);
+}
+.icon-preset.selected {
+    background-color: #667eea;
+    color: white;
+}
+
+body.dark-theme #customCategoriesList {
+    border-color: #44617a;
+}
+body.dark-theme .custom-category-item:hover {
+    background: #34495e;
+}
+body.dark-theme .add-category-form {
+    border-top-color: #44617a;
+}
+body.dark-theme .icon-picker-display {
+    border-color: #557392;
+}
+body.dark-theme .icon-picker-display:hover {
+    border-color: #667eea;
+}
+body.dark-theme .icon-preset-grid {
+    border-top-color: #44617a;
+}
+body.dark-theme .icon-preset:hover {
+    background-color: #4a5568;
+}
+body.dark-theme .icon-preset.selected {
+    background-color: #764ba2;
 }
