@@ -106,13 +106,13 @@
         </div>
 
         <div class="tabs">
-            <div class="tab" id="tab-btn-salary" onclick="switchTab(event, 'salary')">💵 Salary & Auto-Deductions</div>
-            <div class="tab active" id="tab-btn-targets" onclick="switchTab(event, 'targets')">🎯 Savings Tracker</div>
-            <div class="tab" id="tab-btn-sinking-funds" onclick="switchTab(event, 'sinking-funds')">🌱 Future Goals</div>
-            <div class="tab" id="tab-btn-expenses" onclick="switchTab(event, 'expenses')">📝 Expenses Tracker</div>
-            <div class="tab" id="tab-btn-budgeting" onclick="switchTab(event, 'budgeting')">💰 Budgeting</div>
-            <div class="tab" id="tab-btn-overtime" onclick="switchTab(event, 'overtime')">⏰ Smart OT Allocator</div>
-            <div class="tab" id="tab-btn-summary" onclick="switchTab(event, 'summary')">📊 Financial Summary</div>
+            <div class="tab" id="tab-btn-salary" onclick="switchTab('salary')">💵 Salary & Auto-Deductions</div>
+            <div class="tab" id="tab-btn-targets" onclick="switchTab('targets')">🎯 Savings Tracker</div>
+            <div class="tab" id="tab-btn-sinking-funds" onclick="switchTab('sinking-funds')">🌱 Future Goals</div>
+            <div class="tab" id="tab-btn-expenses" onclick="switchTab('expenses')">📝 Expenses Tracker</div>
+            <div class="tab" id="tab-btn-budgeting" onclick="switchTab('budgeting')">💰 Budgeting</div>
+            <div class="tab" id="tab-btn-overtime" onclick="switchTab('overtime')">⏰ Smart OT Allocator</div>
+            <div class="tab" id="tab-btn-summary" onclick="switchTab('summary')">📊 Financial Summary</div>
         </div>
 
         <div id="salary-tab" class="tab-content">
@@ -185,7 +185,7 @@
             </div>
         </div>
 
-        <div id="targets-tab" class="tab-content active">
+        <div id="targets-tab" class="tab-content">
             <div class="form-section">
                 <h3 class="card-title">Savings Target & OT Planner</h3>
                 
@@ -363,6 +363,7 @@
                     <div>
                         <button class="btn btn-success" onclick="applyRecurringExpenses()">➕ Apply Recurring</button>
                         <button class="btn btn-info" onclick="copyLastMonthExpenses()">⎘ Copy Last Month's</button>
+                        <button class="btn btn-secondary" onclick="openManageCategoriesModal()">⚙️ Manage Categories</button>
                     </div>
                 </div>
                 
@@ -374,21 +375,7 @@
                     <div class="form-group">
                         <label>Category</label>
                         <select id="expenseCategory">
-                            <option value="mortgage_rent">🏠 Mortgage or Rent</option>
-                            <option value="food">🍔 Food & Dining</option>
-                            <option value="groceries">🛒 Groceries</option>
-                            <option value="transport">🚗 Transportation</option>
-                            <option value="utilities">💡 Utilities & Bills</option>
-                            <option value="subscriptions">🔁 Subscriptions</option>
-                            <option value="shopping">🛍️ Shopping</option>
-                            <option value="entertainment">🎬 Entertainment</option>
-                            <option value="health">🏥 Health & Medical</option>
-                            <option value="debt_loans">💳 Debt & Loans</option>
-                            <option value="personal_care">🧴 Personal Care</option>
-                            <option value="family">👨‍👩‍👧‍👦 Family</option>
-                            <option value="gifts">🎁 Gifts</option>
-                            <option value="savings_investments">💰 Savings & Investments</option>
-                            <option value="others">📦 Others</option>
+                            <!-- Options populated by JS -->
                         </select>
                     </div>
                     <div class="form-group">
@@ -449,16 +436,39 @@
         
         <div id="budgeting-tab" class="tab-content">
             <div class="form-section">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 class="card-title">Monthly Budgeting</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <h3 class="card-title" style="margin-bottom: 0;">Monthly Budgeting</h3>
                     <button class="btn btn-info" onclick="copyLastMonthBudgets()">⎘ Copy Last Month's Budgets</button>
                 </div>
+
+                <!-- New Controls Section -->
+                <div class="budget-controls">
+                    <div class="form-group">
+                        <label for="budgetSortOrder">Sort By</label>
+                        <select id="budgetSortOrder" onchange="displayBudgets()">
+                            <option value="default">Default</option>
+                            <option value="overspent">Most Overspent</option>
+                            <option value="percent_desc">Highest % Used</option>
+                            <option value="remaining_asc">Least Remaining</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="addBudgetCategory">Add Budget For</label>
+                        <div class="add-budget-group">
+                            <select id="addBudgetCategory">
+                                <!-- Options will be populated by JS -->
+                            </select>
+                            <button class="btn btn-small" onclick="addBudgetCategoryCard()">Add</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="alert alert-info">
-                    Set a budget for each category to track your spending. Your progress is automatically updated as you add expenses. Budgets are saved per month.
+                    Set a budget for each category to track your spending. Only categories with a budget or expenses are shown.
                 </div>
                 
                 <div class="summary-grid" id="budgetSummary">
-                    </div>
+                </div>
 
                 <div id="budgetContainer" class="budget-grid">
                 </div>
@@ -964,6 +974,27 @@
             <span class="modal-close" onclick="closeContributionHistoryModal()">&times;</span>
             <h2 id="contributionHistoryTitle">Contribution History</h2>
             <div id="contributionHistoryContent"></div>
+        </div>
+    </div>
+
+    <div id="manage-categories-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeManageCategoriesModal()">&times;</span>
+            <h2><span style="font-size: 1.2em; vertical-align: middle;">⚙️</span> Manage Custom Categories</h2>
+            <p style="margin-bottom: 15px;">Add, remove, or edit your own expense categories.</p>
+            <div id="customCategoriesList"></div>
+            <div class="add-category-form">
+                <div class="form-group">
+                    <label>Category Name</label>
+                    <input type="text" id="newCategoryName" placeholder="e.g., Pet Supplies">
+                </div>
+                <div class="form-group">
+                    <label>Icon</label>
+                    <div id="selectedCategoryIcon" class="icon-picker-display" onclick="toggleIconGrid()">🏷️</div>
+                </div>
+                <button class="btn" onclick="addCustomCategory()" style="align-self: flex-end; margin: 0; height: 44px;">Add Category</button>
+            </div>
+            <div id="iconPresetGrid" class="icon-preset-grid" style="display: none;"></div>
         </div>
     </div>
 
