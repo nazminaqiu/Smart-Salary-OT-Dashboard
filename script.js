@@ -1,4 +1,3 @@
-
 // --- HELPER FUNCTIONS ---
 const round2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
 const fmtRM = n => `RM ${round2(n).toFixed(2)}`;
@@ -59,7 +58,7 @@ function launchSimulator() {
     categories.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat;
-        option.textContent = cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, ' ');
+        option.textContent = getCategoryInfo(cat).name;
         categorySelect.appendChild(option);
     });
     document.getElementById('simulator-modal').style.display = 'flex';
@@ -126,6 +125,7 @@ let savingsPots = [];
 let budgets = {}; 
 let recurringExpenses = [];
 let previewedOTEntries = [];
+let customCategories = [];
 let currentPayPeriod = '';
 let startDatePicker, endDatePicker, payPeriodPicker, expenseDatePicker, fundDueDatePicker, otEditDatePicker, fundEditDueDatePicker;
 let expenseSortColumn = 'date';
@@ -136,6 +136,164 @@ let aiSavingsPlan = {};
 let otCalendar;
 let showArchived = false;
 
+// --- CATEGORY MANAGEMENT ---
+const categoryConfig = {
+    mortgage_rent: { name: 'Mortgage or Rent', icon: '🏠' },
+    food: { name: 'Food & Dining', icon: '🍔' },
+    groceries: { name: 'Groceries', icon: '🛒' },
+    transport: { name: 'Transportation', icon: '🚗' },
+    utilities: { name: 'Utilities & Bills', icon: '💡' },
+    subscriptions: { name: 'Subscriptions', icon: '🔁' },
+    shopping: { name: 'Shopping', icon: '🛍️' },
+    entertainment: { name: 'Entertainment', icon: '🎬' },
+    health: { name: 'Health & Medical', icon: '🏥' },
+    debt_loans: { name: 'Debt & Loans', icon: '💳' },
+    personal_care: { name: 'Personal Care', icon: '🧴' },
+    family: { name: 'Family', icon: '👨‍👩‍👧‍👦' },
+    gifts: { name: 'Gifts', icon: '🎁' },
+    savings_investments: { name: 'Savings & Investments', icon: '💰' },
+    others: { name: 'Others', icon: '📦' },
+};
+
+const iconPresets = [
+    '⛽', '🛣️', '🅿️', '🛠️', '💊', '⚕️', '🧾', '🎓', '👶', '🐾', '🐶', '🐱',
+    '👕', '💅', '💇‍♀️', '🎁', '🎉', '✈️', '💼', '📈', '📉', '❤️', '🏛️', '🏡'
+];
+
+function getCategoryInfo(value) {
+    if (categoryConfig[value]) {
+        return categoryConfig[value];
+    }
+    const custom = customCategories.find(c => c.value === value);
+    return custom || { name: value, icon: '🏷️' };
+}
+
+function loadCustomCategories() {
+    customCategories = JSON.parse(localStorage.getItem('customCategories') || '[]');
+}
+
+function saveCustomCategories() {
+    localStorage.setItem('customCategories', JSON.stringify(customCategories));
+    populateCategoryDropdowns();
+}
+
+function populateCategoryDropdowns() {
+    const allCategories = [
+        ...Object.entries(categoryConfig),
+        ...customCategories.map(c => [c.value, { name: c.name, icon: c.icon }])
+    ];
+
+    const dropdowns = [
+        document.getElementById('expenseCategory'),
+        // Note: 'addBudgetCategory' and 'miniSimExpenseCategory' are populated dynamically by their respective functions
+    ];
+
+    dropdowns.forEach(select => {
+        if (!select) return;
+        const currentValue = select.value;
+        select.innerHTML = '';
+        allCategories.forEach(([value, { name, icon }]) => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = `${icon} ${name}`;
+            select.appendChild(option);
+        });
+        if (currentValue) {
+             select.value = currentValue;
+        }
+    });
+}
+
+function openManageCategoriesModal() {
+    populateIconGrid();
+    displayCustomCategories();
+    document.getElementById('manage-categories-modal').style.display = 'flex';
+}
+
+function closeManageCategoriesModal() {
+    document.getElementById('manage-categories-modal').style.display = 'none';
+}
+
+function displayCustomCategories() {
+    const list = document.getElementById('customCategoriesList');
+    list.innerHTML = '';
+    if (customCategories.length === 0) {
+        list.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No custom categories yet. Add one below!</p>';
+    } else {
+        customCategories.forEach(cat => {
+            const item = document.createElement('div');
+            item.className = 'custom-category-item';
+            item.innerHTML = `
+                <span>${cat.icon} ${cat.name}</span>
+                <button class="btn btn-small btn-danger" onclick="deleteCustomCategory('${cat.value}')">Delete</button>
+            `;
+            list.appendChild(item);
+        });
+    }
+}
+
+function addCustomCategory() {
+    const nameInput = document.getElementById('newCategoryName');
+    const iconDisplay = document.getElementById('selectedCategoryIcon');
+    const name = nameInput.value.trim();
+    const icon = iconDisplay.textContent;
+    
+    if (!name) {
+        alert('Please enter a category name.');
+        return;
+    }
+
+    const value = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    
+    if (categoryConfig[value] || customCategories.some(c => c.value === value)) {
+        alert('This category already exists.');
+        return;
+    }
+
+    customCategories.push({ name, icon, value });
+    saveCustomCategories();
+    displayCustomCategories();
+    nameInput.value = '';
+    iconDisplay.textContent = '🏷️'; // Reset to default
+    document.getElementById('iconPresetGrid').style.display = 'none'; // Hide picker
+}
+
+function deleteCustomCategory(value) {
+    if (confirm('Are you sure you want to delete this category? This cannot be undone.')) {
+        customCategories = customCategories.filter(c => c.value !== value);
+        saveCustomCategories();
+        displayCustomCategories();
+    }
+}
+
+function populateIconGrid() {
+    const grid = document.getElementById('iconPresetGrid');
+    grid.innerHTML = '';
+
+    // Get default icons from the main config
+    const defaultIcons = Object.values(categoryConfig).map(cat => cat.icon);
+    
+    // Combine default icons with the preset list, ensuring no duplicates
+    const allIcons = [...new Set([...defaultIcons, ...iconPresets])];
+
+    allIcons.forEach(icon => {
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'icon-preset';
+        iconDiv.textContent = icon;
+        iconDiv.onclick = () => selectIcon(icon);
+        grid.appendChild(iconDiv);
+    });
+}
+
+function selectIcon(icon) {
+    document.getElementById('selectedCategoryIcon').textContent = icon;
+    document.getElementById('iconPresetGrid').style.display = 'none';
+}
+
+function toggleIconGrid() {
+    const grid = document.getElementById('iconPresetGrid');
+    grid.style.display = grid.style.display === 'none' ? 'grid' : 'none';
+}
 
 const generateId = () => 'id_' + Math.random().toString(36).substr(2, 9);
 
@@ -179,6 +337,9 @@ function initializeData() {
     initializeMonthPickers();
     initializeCalendar();
     
+    loadCustomCategories();
+    populateCategoryDropdowns();
+    
     const savedRecurring = localStorage.getItem('recurringExpenses');
     recurringExpenses = savedRecurring ? JSON.parse(savedRecurring) : [];
     
@@ -194,6 +355,9 @@ function initializeData() {
     
     updateAllDisplays();
     runForecast();
+    
+    // Set the default tab on page load
+    switchTab('salary');
 }
 
 function handlePayPeriodChange(newPeriod) {
@@ -363,24 +527,24 @@ function calculateDeductions(currentSalary, totalOT) {
     return { epf, socso, eis, pcb };
 }
 
-function switchTab(event, tabName) {
+function switchTab(tabName) {
+    // Deactivate all tabs and content
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     
-    let targetElement = event.target;
-    while (targetElement && !targetElement.classList.contains('tab')) {
-        targetElement = targetElement.parentElement;
-    }
-    if(targetElement) {
-        targetElement.classList.add('active');
-    }
-
+    // Activate the selected tab and content
+    document.getElementById(`tab-btn-${tabName}`).classList.add('active');
     document.getElementById(`${tabName}-tab`).classList.add('active');
-    if (tabName === 'summary') updateSummary();
+
+    // Special actions for specific tabs
+    if (tabName === 'summary') {
+        updateSummary();
+    }
     if (tabName === 'overtime' && otCalendar) {
-        setTimeout(() => otCalendar.render(), 0);
+        setTimeout(() => otCalendar.render(), 0); // Re-render calendar on tab switch
     }
 }
+
 
 function updateAndSaveSalary() {
     salaryData.basic = parseFloat(document.getElementById('basicSalary').value) || 0;
@@ -1485,6 +1649,9 @@ function displayExpenses() {
             totalFullAmount += expense.fullAmount || 0;
         }
 
+        const categoryInfo = getCategoryInfo(expense.category);
+        const categoryName = `${categoryInfo.icon} ${categoryInfo.name}`;
+        
         const profileMap = {'equal50': '50/50', 'mine100': 'You Pay 100%', 'partner100': 'Partner Pays 100%', 'custom': 'Custom'};
         const profileText = profileMap[expense.splitProfile] || 'Custom';
 
@@ -1495,7 +1662,7 @@ function displayExpenses() {
         }
         row.innerHTML = `
             <td onclick="makeEditable(this, '${expense.id}', 'date')">${expense.date}</td>
-            <td onclick="makeEditable(this, '${expense.id}', 'category')"><span class="expense-category category-${expense.category.replace(/_/g, '-')}">${expense.category.replace(/_/g, ' ')}</span></td>
+            <td onclick="makeEditable(this, '${expense.id}', 'category')"><span class="expense-category category-${expense.category.replace(/_/g, '-')}">${categoryName}</span></td>
             <td onclick="makeEditable(this, '${expense.id}', 'description')">${expense.description}</td>
             <td onclick="makeEditable(this, '${expense.id}', 'splitProfile')"><span class="split-pill">${profileText}</span></td>
             <td onclick="makeEditable(this, '${expense.id}', 'myShare')">${fmtRM(expense.myShare)}</td>
@@ -1890,7 +2057,7 @@ function updateSummary() {
     Object.entries(categoryTotals).forEach(([category, amount]) => {
         const div = document.createElement('div');
         div.className = 'summary-item';
-        div.innerHTML = `<div class="stat-label">${category.replace(/_/g, ' ')}</div><div style="font-size: 1.2em; font-weight: bold;">${fmtRM(amount)}</div><div style="font-size: 0.9em; color: #666;">${(expensesToDisplay > 0 ? (amount / expensesToDisplay) * 100 : 0).toFixed(1)}% of total</div>`;
+        div.innerHTML = `<div class="stat-label">${getCategoryInfo(category).name}</div><div style="font-size: 1.2em; font-weight: bold;">${fmtRM(amount)}</div><div style="font-size: 0.9em; color: #666;">${(expensesToDisplay > 0 ? (amount / expensesToDisplay) * 100 : 0).toFixed(1)}% of total</div>`;
         breakdownDiv.appendChild(div);
     });
 }
@@ -2041,7 +2208,7 @@ function exportData() {
     const dataToExport = {};
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key.startsWith('salaryData_') || key.startsWith('overtimeEntries_') || key.startsWith('expenses_') || key.startsWith('savingsGoalsData_') || key.startsWith('budgets_') || key === 'recurringExpenses' || key === 'lastPayPeriod' || key === 'sinkingFunds' || key === 'savingsPots') {
+        if (key.startsWith('salaryData_') || key.startsWith('overtimeEntries_') || key.startsWith('expenses_') || key.startsWith('savingsGoalsData_') || key.startsWith('budgets_') || key === 'recurringExpenses' || key === 'lastPayPeriod' || key === 'sinkingFunds' || key === 'savingsPots' || key === 'customCategories') {
             dataToExport[key] = localStorage.getItem(key);
         }
     }
@@ -2500,7 +2667,7 @@ async function exportDetailedPDF() {
     const top5Categories = Object.entries(topCategories)
         .sort(([,a],[,b]) => b-a)
         .slice(0, 5)
-        .map(([name, amount]) => `<li>${name.replace(/_/g, ' ')}: <strong>${fmtRM(amount)}</strong></li>`)
+        .map(([value, amount]) => `<li>${getCategoryInfo(value).name}: <strong>${fmtRM(amount)}</strong></li>`)
         .join('');
         
     const infographicContainer = document.createElement('div');
@@ -2654,7 +2821,7 @@ async function exportDetailedPDF() {
 
         const expenseBody = expensesForTable.map(e => [
             e.date,
-            e.category.replace(/_/g, ' '),
+            getCategoryInfo(e.category).name,
             e.description || '',
             fmtRM(e.myShare),
             fmtRM(e.partnerShare || 0),
@@ -2732,7 +2899,7 @@ async function exportExpensesOnlyPDF() {
 
         const expenseBody = expensesForTable.map(e => [
             e.date,
-            e.category.replace(/_/g, ' '),
+            getCategoryInfo(e.category).name,
             e.description || '',
             e.isExcluded ? 'Yes' : 'No',
             fmtRM(e.myShare),
@@ -3223,7 +3390,7 @@ function createOTPlan() {
     const otAmount = parseFloat(otRequiredText.replace(/[^0-9.-]+/g,""));
 
     if (otAmount > 0) {
-        document.getElementById('tab-btn-overtime').click();
+        switchTab('overtime');
         
         const targetInput = document.getElementById('targetOTEarnings');
         targetInput.value = otAmount.toFixed(2);
@@ -3265,7 +3432,7 @@ function topUpFromClaims() {
         
         claimsInput.value = (currentClaims + shortfall).toFixed(2);
         
-        document.getElementById('tab-btn-salary').click();
+        switchTab('salary');
         
         autoCalculateDeductions();
         
@@ -3302,7 +3469,7 @@ function planOTForTarget() {
         const currentOTEarnings = parseFloat(targetInput.value) || 0;
         const newTargetOTEarnings = currentOTEarnings + otRequired;
 
-        document.getElementById('tab-btn-overtime').click();
+        switchTab('overtime');
         targetInput.value = newTargetOTEarnings.toFixed(2);
         handleRealtimeAllocation();
         showToast(`OT Target increased by ${fmtRM(otRequired)}.`);
@@ -3341,7 +3508,7 @@ function populateMiniSimulator() {
         categories.forEach(cat => {
             const option = document.createElement('option');
             option.value = cat;
-            option.textContent = cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, ' ');
+            option.textContent = getCategoryInfo(cat).name;
             categorySelect.appendChild(option);
         });
 
@@ -3520,27 +3687,41 @@ function logSavingsAsExpense() {
 // --- BUDGETING FUNCTIONS ---
 const debouncedSaveBudget = debounce((category, value) => {
     const amount = parseFloat(value) || 0;
-    budgets[category] = amount;
+    // If user clears the input or enters 0, remove the budget entirely
+    if (amount > 0) {
+        budgets[category] = amount;
+    } else {
+        delete budgets[category]; // This allows removing a budget card from view
+    }
     saveDataForPeriod(currentPayPeriod);
     displayBudgets(); 
 }, 500);
 
 function saveBudget(category, value) {
-    debouncedSaveBudget(category, value);
+    const amount = parseFloat(value) || 0;
+    if (amount > 0) {
+        budgets[category] = amount;
+    } else {
+        delete budgets[category]; // This removes the budget if the input is cleared
+    }
+    saveDataForPeriod(currentPayPeriod);
+    displayBudgets(); // Redraw the grid to reflect the change
+}
+
+function handleBudgetInputKeydown(event) {
+    if (event.key === 'Enter') {
+        event.target.blur(); // Blurring the element will trigger the 'onchange' event
+    }
 }
 
 function displayBudgets() {
     const container = document.getElementById('budgetContainer');
     const summaryContainer = document.getElementById('budgetSummary');
+    const addCategorySelect = document.getElementById('addBudgetCategory');
     container.innerHTML = '';
     summaryContainer.innerHTML = '';
+    addCategorySelect.innerHTML = '';
 
-    const categorySelect = document.getElementById('expenseCategory');
-    const categories = Array.from(categorySelect.options);
-
-    let totalBudgeted = 0;
-    let totalSpent = 0;
-    
     const categorySpending = expenses
         .filter(e => !e.isExcluded)
         .reduce((acc, expense) => {
@@ -3548,51 +3729,116 @@ function displayBudgets() {
             return acc;
         }, {});
 
-    categories.forEach(option => {
-        const category = option.value;
-        const categoryName = option.textContent.substring(2);
-        const budgetAmount = budgets[category] || 0;
-        const spentAmount = categorySpending[category] || 0;
+    const relevantCategories = [...new Set([...Object.keys(budgets), ...Object.keys(categorySpending)])];
 
-        totalBudgeted += budgetAmount;
-        totalSpent += spentAmount;
-        
-        const remaining = budgetAmount - spentAmount;
-        const progress = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
-        
+    let budgetCardsData = [];
+    const allCategoryOptions = [...Object.entries(categoryConfig), ...customCategories.map(c => [c.value, c])];
+    
+    let unbudgetedSpending = 0;
+
+    allCategoryOptions.forEach(([value, info]) => {
+        const category = value;
+        const categoryName = `${info.icon} ${info.name}`;
+
+        if (relevantCategories.includes(category)) {
+            const budgetAmount = budgets[category] || 0;
+            const spentAmount = categorySpending[category] || 0;
+            
+            if (budgetAmount === 0 && spentAmount > 0) {
+                unbudgetedSpending += spentAmount;
+            }
+
+            const remaining = budgetAmount - spentAmount;
+            const progress = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
+            
+            budgetCardsData.push({
+                category,
+                categoryName,
+                budgetAmount,
+                spentAmount,
+                remaining,
+                progress
+            });
+        } else {
+             addCategorySelect.innerHTML += `<option value="${category}">${categoryName}</option>`;
+        }
+    });
+
+    const sortOrder = document.getElementById('budgetSortOrder').value;
+    switch (sortOrder) {
+        case 'overspent':
+            budgetCardsData.sort((a, b) => a.remaining - b.remaining);
+            break;
+        case 'percent_desc':
+            budgetCardsData.sort((a, b) => b.progress - a.progress);
+            break;
+        case 'remaining_asc':
+            budgetCardsData.sort((a, b) => {
+                if (a.budgetAmount === 0) return 1;
+                if (b.budgetAmount === 0) return -1;
+                return a.remaining - b.remaining;
+            });
+            break;
+    }
+
+    if (unbudgetedSpending > 0) {
+        const unbudgetedCard = document.createElement('div');
+        unbudgetedCard.className = 'budget-card unbudgeted';
+        unbudgetedCard.innerHTML = `
+            <div class="budget-card-header">
+                <h5>⚠️ Unbudgeted Spending</h5>
+            </div>
+            <div class="budget-details" style="text-align: center; font-size: 1.2em; padding: 15px 0;">
+                You've spent <strong>${fmtRM(unbudgetedSpending)}</strong> in categories with no budget.
+            </div>
+        `;
+        container.appendChild(unbudgetedCard);
+    }
+    
+    let totalBudgeted = 0;
+    let totalSpent = 0;
+
+    budgetCardsData.forEach(data => {
+        totalBudgeted += data.budgetAmount;
+        totalSpent += data.spentAmount;
+
         let statusClass = 'good';
-        if (progress > 100) statusClass = 'over';
-        else if (progress > 75) statusClass = 'warning';
-
+        if (data.progress > 100) statusClass = 'over';
+        else if (data.progress > 75) statusClass = 'warning';
+        
         const card = document.createElement('div');
+        card.id = `budget-card-${data.category}`;
         card.className = 'budget-card';
         card.innerHTML = `
             <div class="budget-card-header">
-                <h5>${option.textContent}</h5>
+                <h5>${data.categoryName}</h5>
                 <input 
                     type="number" 
                     class="form-group budget-input" 
                     placeholder="Set Budget" 
-                    value="${budgetAmount > 0 ? budgetAmount : ''}"
-                    oninput="saveBudget('${category}', this.value)"
+                    value="${data.budgetAmount > 0 ? data.budgetAmount : ''}"
+                    onchange="saveBudget('${data.category}', this.value)"
+                    onkeydown="handleBudgetInputKeydown(event)"
                 >
             </div>
             <div class="progress-bar">
-                <div class="progress-fill status-${statusClass}" style="width: ${Math.min(progress, 100)}%;">
-                    ${progress.toFixed(0)}%
+                <div class="progress-fill status-${statusClass}" style="width: ${Math.min(data.progress, 100)}%;">
+                    ${data.progress.toFixed(0)}%
                 </div>
             </div>
             <div class="budget-details">
-                <span>Spent: ${fmtRM(spentAmount)} of ${fmtRM(budgetAmount)}</span>
-                <span class="budget-status ${remaining >= 0 ? 'remaining' : 'overspent'}">
-                    ${remaining >= 0 ? fmtRM(remaining) + ' left' : fmtRM(Math.abs(remaining)) + ' over'}
+                <span>Spent: ${fmtRM(data.spentAmount)} of ${fmtRM(data.budgetAmount)}</span>
+                <span class="budget-status ${data.remaining >= 0 ? 'remaining' : 'overspent'}">
+                    ${data.remaining >= 0 ? fmtRM(data.remaining) + ' left' : fmtRM(Math.abs(data.remaining)) + ' over'}
                 </span>
             </div>
         `;
         container.appendChild(card);
     });
 
-    const remainingOverall = totalBudgeted - totalSpent;
+    const remainingOverall = totalBudgeted - (totalSpent + unbudgetedSpending);
+    totalSpent += unbudgetedSpending;
+
     summaryContainer.innerHTML = `
         <div class="summary-item">
             <div class="stat-label">Total Budgeted</div>
@@ -3610,6 +3856,29 @@ function displayBudgets() {
         </div>
     `;
 }
+
+function addBudgetCategoryCard() {
+    const select = document.getElementById('addBudgetCategory');
+    const category = select.value;
+    if (!category) return;
+
+    if (document.getElementById(`budget-card-${category}`)) {
+        showToast("This category is already displayed.", "info");
+        return;
+    }
+    
+    if (!budgets[category]) {
+        budgets[category] = 0;
+    }
+    displayBudgets();
+
+    const newCardInput = document.querySelector(`#budget-card-${category} .budget-input`);
+    if (newCardInput) {
+        newCardInput.focus();
+        newCardInput.select();
+    }
+}
+
 
 function copyLastMonthBudgets() {
     const prevPeriod = getPreviousMonthPeriod(currentPayPeriod);
