@@ -395,16 +395,16 @@ tr.excluded-expense .split-pill {
     text-transform: capitalize;
 }
 
-/* This new rule provides a default style for ALL categories */
-.expense-category {
-    background: #6c757d; /* Neutral gray fallback */
-    color: white;
-}
-
 .split-pill {
     font-weight: 500;
     background-color: #e9ecef;
     color: #495057;
+}
+
+/* Fallback style for all categories, custom or otherwise */
+.expense-category {
+    background: #6c757d; /* Neutral gray */
+    color: white;
 }
 
 .category-food { background: #ff9800; color: white; }
@@ -1145,16 +1145,30 @@ body.dark-theme .budget-card.unbudgeted .budget-details {
 .custom-category-item:hover {
     background: #f8f9fa;
 }
+.custom-category-item-actions {
+    display: flex;
+    gap: 10px;
+}
 
 .add-category-form {
     display: grid;
-    grid-template-columns: 3fr 1fr 1fr;
+    grid-template-columns: 3fr 1fr auto;
     gap: 15px;
     align-items: flex-end;
     margin-top: 20px;
     padding-top: 20px;
     border-top: 1px solid #e0e0e0;
 }
+.category-button-group {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+.category-button-group .btn {
+    margin: 0;
+    flex-shrink: 0;
+}
+
 .icon-picker-display {
     display: flex;
     align-items: center;

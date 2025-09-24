@@ -522,6 +522,14 @@
                         <input type="number" id="maxHoursPH" placeholder="Default: 8" step="0.25" oninput="debouncedAllocation()">
                     </div>
                 </div>
+				
+				 <h4 style="margin-top: 20px; margin-bottom: 15px;">Custom Dates</h4>
+                <div class="form-grid" style="grid-template-columns: 1fr;">
+                    <div class="form-group">
+                        <label>Custom Public Holidays (2.0x Rate)</label>
+                        <input type="text" id="customPublicHolidays" placeholder="Select any additional dates to treat as public holidays...">
+                    </div>
+                </div>
                 
                 <button class="btn btn-success" onclick="generateAndApplyOT()">🚀 Generate & Apply Schedule</button>
                 <button class="btn btn-warning" onclick="previewOTAllocation()">👁️ Preview Allocation</button>
@@ -992,7 +1000,11 @@
                     <label>Icon</label>
                     <div id="selectedCategoryIcon" class="icon-picker-display" onclick="toggleIconGrid()">🏷️</div>
                 </div>
-                <button class="btn" onclick="addCustomCategory()" style="align-self: flex-end; margin: 0; height: 44px;">Add Category</button>
+                <div class="category-button-group">
+                    <input type="hidden" id="editingCategoryValue">
+                    <button id="addCategoryBtn" class="btn" onclick="addCustomCategory()">Add Category</button>
+                    <button id="cancelEditCategoryBtn" class="btn btn-secondary" onclick="resetCategoryForm()" style="display: none;">Cancel</button>
+                </div>
             </div>
             <div id="iconPresetGrid" class="icon-preset-grid" style="display: none;"></div>
         </div>

@@ -2,6 +2,14 @@
 const round2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
 const fmtRM = n => `RM ${round2(n).toFixed(2)}`;
 
+function toLocalDateString(date) {
+    // A timezone-safe way to get YYYY-MM-DD
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function formatHoursDuration(decimalHours) {
     if (typeof decimalHours !== 'number' || isNaN(decimalHours)) {
         return '';
@@ -127,7 +135,7 @@ let recurringExpenses = [];
 let previewedOTEntries = [];
 let customCategories = [];
 let currentPayPeriod = '';
-let startDatePicker, endDatePicker, payPeriodPicker, expenseDatePicker, fundDueDatePicker, otEditDatePicker, fundEditDueDatePicker;
+let startDatePicker, endDatePicker, payPeriodPicker, expenseDatePicker, fundDueDatePicker, otEditDatePicker, fundEditDueDatePicker, customHolidayPicker;
 let expenseSortColumn = 'date';
 let expenseSortDirection = 'desc';
 let manualExpenseSet = false;
@@ -207,6 +215,7 @@ function populateCategoryDropdowns() {
 function openManageCategoriesModal() {
     populateIconGrid();
     displayCustomCategories();
+    resetCategoryForm();
     document.getElementById('manage-categories-modal').style.display = 'flex';
 }
 
@@ -225,7 +234,10 @@ function displayCustomCategories() {
             item.className = 'custom-category-item';
             item.innerHTML = `
                 <span>${cat.icon} ${cat.name}</span>
-                <button class="btn btn-small btn-danger" onclick="deleteCustomCategory('${cat.value}')">Delete</button>
+                <div class="custom-category-item-actions">
+                    <button class="btn btn-small btn-secondary" onclick="editCustomCategory('${cat.value}')">Edit</button>
+                    <button class="btn btn-small btn-danger" onclick="deleteCustomCategory('${cat.value}')">Delete</button>
+                </div>
             `;
             list.appendChild(item);
         });
@@ -235,27 +247,65 @@ function displayCustomCategories() {
 function addCustomCategory() {
     const nameInput = document.getElementById('newCategoryName');
     const iconDisplay = document.getElementById('selectedCategoryIcon');
+    const editingValue = document.getElementById('editingCategoryValue').value;
     const name = nameInput.value.trim();
     const icon = iconDisplay.textContent;
-    
+
     if (!name) {
         alert('Please enter a category name.');
         return;
     }
 
-    const value = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-    
-    if (categoryConfig[value] || customCategories.some(c => c.value === value)) {
-        alert('This category already exists.');
-        return;
+    if (editingValue) {
+        // Update existing category
+        const categoryIndex = customCategories.findIndex(c => c.value === editingValue);
+        if (categoryIndex > -1) {
+            customCategories[categoryIndex].name = name;
+            customCategories[categoryIndex].icon = icon;
+        }
+    } else {
+        // Add new category
+        const value = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        if (categoryConfig[value] || customCategories.some(c => c.value === value)) {
+            alert('A category with this name or a similar internal ID already exists.');
+            return;
+        }
+        customCategories.push({ name, icon, value });
     }
 
-    customCategories.push({ name, icon, value });
     saveCustomCategories();
     displayCustomCategories();
-    nameInput.value = '';
-    iconDisplay.textContent = '🏷️'; // Reset to default
-    document.getElementById('iconPresetGrid').style.display = 'none'; // Hide picker
+    resetCategoryForm();
+}
+
+function editCustomCategory(value) {
+    const category = customCategories.find(c => c.value === value);
+    if (!category) return;
+
+    document.getElementById('newCategoryName').value = category.name;
+    document.getElementById('selectedCategoryIcon').textContent = category.icon;
+    document.getElementById('editingCategoryValue').value = category.value;
+
+    const addBtn = document.getElementById('addCategoryBtn');
+    addBtn.textContent = 'Update Category';
+    addBtn.classList.remove('btn-success');
+    addBtn.classList.add('btn-warning');
+
+    document.getElementById('cancelEditCategoryBtn').style.display = 'inline-block';
+}
+
+function resetCategoryForm() {
+    document.getElementById('newCategoryName').value = '';
+    document.getElementById('selectedCategoryIcon').textContent = '🏷️';
+    document.getElementById('editingCategoryValue').value = '';
+
+    const addBtn = document.getElementById('addCategoryBtn');
+    addBtn.textContent = 'Add Category';
+    addBtn.classList.remove('btn-warning');
+    addBtn.classList.add('btn-success');
+
+    document.getElementById('cancelEditCategoryBtn').style.display = 'none';
+    document.getElementById('iconPresetGrid').style.display = 'none';
 }
 
 function deleteCustomCategory(value) {
@@ -269,11 +319,7 @@ function deleteCustomCategory(value) {
 function populateIconGrid() {
     const grid = document.getElementById('iconPresetGrid');
     grid.innerHTML = '';
-
-    // Get default icons from the main config
     const defaultIcons = Object.values(categoryConfig).map(cat => cat.icon);
-    
-    // Combine default icons with the preset list, ensuring no duplicates
     const allIcons = [...new Set([...defaultIcons, ...iconPresets])];
 
     allIcons.forEach(icon => {
@@ -356,7 +402,6 @@ function initializeData() {
     updateAllDisplays();
     runForecast();
     
-    // Set the default tab on page load
     switchTab('salary');
 }
 
@@ -417,7 +462,13 @@ function loadDataForPeriod(period) {
     } else {
         setDefaultOtDates();
     }
-    
+    // Add this block
+    if (salaryData.customPublicHolidays) {
+        customHolidayPicker.setDate(salaryData.customPublicHolidays, false);
+    } else {
+        customHolidayPicker.clear();
+    }
+	
     const [year, month] = period.split('-').map(Number);
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     document.getElementById('currentMonth').value = `${months[month - 1]} ${year}`;
@@ -528,20 +579,17 @@ function calculateDeductions(currentSalary, totalOT) {
 }
 
 function switchTab(tabName) {
-    // Deactivate all tabs and content
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     
-    // Activate the selected tab and content
     document.getElementById(`tab-btn-${tabName}`).classList.add('active');
     document.getElementById(`${tabName}-tab`).classList.add('active');
 
-    // Special actions for specific tabs
     if (tabName === 'summary') {
         updateSummary();
     }
     if (tabName === 'overtime' && otCalendar) {
-        setTimeout(() => otCalendar.render(), 0); // Re-render calendar on tab switch
+        setTimeout(() => otCalendar.render(), 0);
     }
 }
 
@@ -651,6 +699,16 @@ function initializeDatePickers() {
     fundEditDueDatePicker = flatpickr("#fundEditDueDate", {
         ...flatpickrConfig,
         minDate: "today"
+    });
+	// Add this new picker at the end
+    customHolidayPicker = flatpickr("#customPublicHolidays", {
+        ...flatpickrConfig,
+        mode: "multiple",
+        onChange: function(selectedDates, dateStr, instance) {
+			salaryData.customPublicHolidays = instance.selectedDates.map(d => toLocalDateString(d));
+            saveDataForPeriod(currentPayPeriod);
+            debouncedAllocation(); // Re-run allocation when holidays change
+        }
     });
 }
 
@@ -914,9 +972,20 @@ function readHourLimits() {
 }
 
 function getDayTypeFromDate(date) {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalDateString(date); // Use the new timezone-safe function
     const year = date.getFullYear().toString();
-    if (publicHolidays[year] && publicHolidays[year].includes(dateStr)) return 'publicHoliday';
+
+    // 1. Check for custom user-defined holidays first
+    if (salaryData.customPublicHolidays && salaryData.customPublicHolidays.includes(dateStr)) {
+        return 'publicHoliday';
+    }
+
+    // 2. Check hardcoded holidays
+    if (publicHolidays[year] && publicHolidays[year].includes(dateStr)) {
+        return 'publicHoliday';
+    }
+    
+    // 3. Check day of the week
     const dayOfWeek = date.getDay();
     if (dayOfWeek === 0) return 'sunday';
     if (dayOfWeek === 6) return 'saturday';
@@ -944,21 +1013,30 @@ function allocateOTHours(targetAmount, project, startDateStr, endDateStr, strate
     const endDate = new Date(endDateStr);
 
     while (currentDate <= endDate) {
-        const dayOfWeek = currentDate.getDay();
-        const dateStr = currentDate.toISOString().split('T')[0];
-        const year = currentDate.getFullYear().toString();
-        let rate = 1.5;
-        let isWeekend = false;
-        let currentDayType = 'weekday';
+        // --- THIS IS THE CORRECTED LOGIC BLOCK ---
+        const currentDayType = getDayTypeFromDate(new Date(currentDate));
+        let rate;
+        let isWeekend;
 
-        if (publicHolidays[year] && publicHolidays[year].includes(dateStr)) {
-            rate = 2.0; isWeekend = true; currentDayType = 'publicHoliday';
-        } else if (dayOfWeek === 0) {
-            rate = 0.5; isWeekend = true; currentDayType = 'sunday';
-        } else if (dayOfWeek === 6) {
-            rate = 1.5; isWeekend = true; currentDayType = 'saturday';
+        switch(currentDayType) {
+            case 'publicHoliday':
+                rate = 2.0;
+                isWeekend = true;
+                break;
+            case 'sunday':
+                rate = 0.5;
+                isWeekend = true;
+                break;
+            case 'saturday':
+                rate = 1.5;
+                isWeekend = true;
+                break;
+            default: // weekday
+                rate = 1.5;
+                isWeekend = false;
         }
-        
+        // --- END OF CORRECTED LOGIC BLOCK ---
+
         let match = false;
         if (rate === specificRate) {
             if (dayType === 'weekday' && currentDayType === 'weekday') match = true;
@@ -1200,10 +1278,13 @@ function getDayType(entry) {
 function displayOTEntries() {
     if (otCalendar) {
         otCalendar.refetchEvents();
+        // REMOVE THE FOLLOWING BLOCK OF CODE:
+        /*
         const startDate = document.getElementById('otStartDate').value;
         if(startDate) {
             otCalendar.gotoDate(startDate);
         }
+        */
     }
     
     let totalHours = 0, totalAmount = 0;
@@ -3685,18 +3766,6 @@ function logSavingsAsExpense() {
 }
 
 // --- BUDGETING FUNCTIONS ---
-const debouncedSaveBudget = debounce((category, value) => {
-    const amount = parseFloat(value) || 0;
-    // If user clears the input or enters 0, remove the budget entirely
-    if (amount > 0) {
-        budgets[category] = amount;
-    } else {
-        delete budgets[category]; // This allows removing a budget card from view
-    }
-    saveDataForPeriod(currentPayPeriod);
-    displayBudgets(); 
-}, 500);
-
 function saveBudget(category, value) {
     const amount = parseFloat(value) || 0;
     if (amount > 0) {
@@ -3713,6 +3782,7 @@ function handleBudgetInputKeydown(event) {
         event.target.blur(); // Blurring the element will trigger the 'onchange' event
     }
 }
+
 
 function displayBudgets() {
     const container = document.getElementById('budgetContainer');
@@ -3857,6 +3927,7 @@ function displayBudgets() {
     `;
 }
 
+
 function addBudgetCategoryCard() {
     const select = document.getElementById('addBudgetCategory');
     const category = select.value;
@@ -3868,7 +3939,7 @@ function addBudgetCategoryCard() {
     }
     
     if (!budgets[category]) {
-        budgets[category] = 0;
+        budgets[category] = 0; // Temporarily add to budgets to make it appear
     }
     displayBudgets();
 
