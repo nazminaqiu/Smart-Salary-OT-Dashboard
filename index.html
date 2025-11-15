@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Smart Salary & Overtime Tracker with AI Allocation</title>
+    
+    <link rel="stylesheet" href="styles.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+</head>
+<body>
+    <div id="toast-notification" class="toast" style="display: none;"></div>
+    <input type="file" id="import-file" accept=".json" style="display: none;">
+    <input type="file" id="import-ot-file" accept=".json" style="display: none;"> <div class="container">
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <h1>💼 Advanced Smart Salary & Overtime Tracker</h1>
+                <button class="btn btn-secondary" onclick="toggleTheme()">🌓 Toggle Theme</button>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-warning" onclick="launchSimulator()">シ What-If Simulator</button>
+                <button class="btn btn-info" onclick="triggerImport()">📥 Import Data</button>
+                <button class="btn btn-secondary" onclick="launchExportAsModal()">📤 Export As...</button>
+            </div>
+            <div class="global-settings">
+                <div class="form-group">
+                    <label>Pay Period</label>
+                    <input type="text" id="payPeriod" placeholder="Select Pay Period...">
+                </div>
+                <div class="form-group">
+                    <label>OT Start Date</label>
+                    <input type="text" id="otStartDate" placeholder="Select Start Date...">
+                </div>
+                <div class="form-group">
+                    <label>OT End Date</label>
+                    <input type="text" id="otEndDate" placeholder="Select End Date...">
+                </div>
+                 <div class="form-group">
+                    <label>Current Month</label>
+                    <input type="text" id="currentMonth" readonly style="background: #f0f0f0; text-align: center; font-weight: bold;">
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="card">
+                <h3 class="card-title" id="dashboardTitle">Current Month's Financial Overview</h3>
+                <div class="tooltip-container">
+                    <div class="stat-value" id="netIncome" style="color: #4caf50;">RM 0.00</div>
+                    <div class="stat-label" style="text-align:center; margin-top:-10px; margin-bottom: 20px;">
+                        Net Income <span class="ot-breakdown" id="dashboardOTPaid">(+ RM 0.00 OT)</span>
+                    </div>
+                    <span class="tooltip-text">Your total take-home pay for this month, including last period's overtime, after all deductions (EPF, SOCSO, Tax, etc.).</span>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="tooltip-container">
+                        <div class="stat-label">Total Spent</div>
+                        <div class="dashboard-grid-value" id="dashboardSpent" style="color: #dc3545;">RM 0.00</div>
+                        <span class="tooltip-text">The sum of "Your Share" for all expenses you've tracked this month (excluding any marked as 'Excluded').</span>
+                    </div>
+                    <div class="tooltip-container">
+                        <div class="stat-label">Total Budgeted</div>
+                        <div class="dashboard-grid-value" id="dashboardBudgeted" style="color: #17a2b8;">RM 0.00</div>
+                        <span class="tooltip-text">The total amount you've allocated across all your budget categories for this month.</span>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid #eee; margin-top: 20px; padding-top: 20px; text-align: center;">
+                    <div class="stat-label">Cash Left (After Expenses)</div>
+                    <div class="tooltip-container">
+                        <div style="font-size: 2.2em; color: #20c997; font-weight: bold;" id="netAfterExpenses">RM 0.00</div>
+                        <span class="tooltip-text">This is your Net Income minus your Total Spent. It represents your total savings for the month.</span>
+                    </div>
+                </div>
+                 <div style="border-top: 1px solid #eee; margin-top: 15px; padding-top: 15px; text-align: center;">
+                    <div class="stat-label">Budget Remaining</div>
+                    <div class="tooltip-container">
+                        <div style="font-size: 2.2em; font-weight: bold;" id="dashboardRemaining">RM 0.00</div>
+                        <span class="tooltip-text">The difference between your Total Budgeted amount and your Total Spent. A positive number means you're under budget.</span>
+                    </div>
+                </div>
+                <div id="budget-warning" class="tooltip-container" style="display: none; text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ffc107;">
+                    <div class="budget-alert-text" onclick="switchTab('expenses'); switchSubTab('budgeting-view', 'expenses-tab');">
+                        ⚠️ Budget exceeds income by <strong id="budget-overage">RM 0.00</strong>
+                    </div>
+                    <span class="tooltip-text">You've budgeted more money than your net income for the month. This may lead to debt or require using savings. Click to fix.</span>
+                </div>
+            </div>
+            
+            <div class="card" id="this-months-savings-goal">
+				<h3 class="card-title">🎯 Savings Potential & AI Tip</h3>
+                <div class="tooltip-container">
+                    <div class="stat-label" id="savingsTargetLabel">Projected Savings This Month</div>
+                    <div class="stat-value" id="savingsTargetDisplay">RM 0.00</div>
+                    <span class="tooltip-text" id="savingsTargetTooltip">This is your potential savings based on your current income and expenses. If you set a target, this will show your goal.</span>
+                </div>
+                <div class="tooltip-container summary-item" style="padding: 10px; margin-top: 15px; text-align: center;">
+                    <div class="stat-label">Projected OT Pay (Next Month)</div>
+                    <div style="font-size: 1.8em; font-weight: bold; color: #764ba2;" id="projectedNextMonthOT">RM 0.00</div>
+                    <span class="tooltip-text">The total earnings from the overtime you are currently tracking. This amount will be paid in next month's salary.</span>
+                </div>
+                <div class="tooltip-container" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+                    <div class="stat-label" id="actualVsTargetLabel">AI Savings Suggestion</div>
+                    <div style="font-size: 1.5em; font-weight: bold;" id="savingsStatus">
+                        <span id="savingsActual" data-value="0">RM 0.00</span>
+                        <div id="savingsIndicatorContainer" style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 5px;">
+                            <span id="savingsIndicator" class="savings-indicator">On Track</span>
+                            <button id="topUpBtn" class="btn btn-small btn-warning" style="display: none; margin: 0;" onclick="launchTopUpModal()">Top Up</button>
+                        </div>
+                    </div>
+                    <span class="tooltip-text">When you have a savings target, this shows your progress. If not, it shows an AI-powered suggestion for how much you could save this month.</span>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">💰 Future Goals Savings</h3>
+                <div class="tooltip-container">
+                    <div class="stat-label">Total Saved Across All Goals</div>
+                    <div class="stat-value" id="sinkingFundsTotal">RM 0.00</div>
+                    <span class="tooltip-text">The cumulative amount you have saved across all of your active 'Future Goals' (sinking funds).</span>
+                </div>
+                <div class="tooltip-container" style="margin-top: 15px;">
+                    <div class="stat-label">Next Goal Due</div>
+                    <div style="font-size: 1.5em; font-weight: bold;" id="nextGoalDue">N/A</div>
+                    <span class="tooltip-text">Shows the name and due date of your nearest upcoming goal, helping you stay focused on what's next.</span>
+                </div>
+                <div class="tooltip-container" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+                    <div class="stat-label">Total Gold Invested (All Time)</div>
+                    <div style="font-size: 1.5em; font-weight: bold; color: #ffc107;" id="totalGoldInvestment">RM 0.00</div>
+                    <span class="tooltip-text">The total amount you have logged for your recurring monthly gold investment across all periods.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab" id="tab-btn-salary" onclick="switchTab('salary')">💵 Salary & Auto-Deductions</div>
+            <div class="tab" id="tab-btn-targets" onclick="switchTab('targets')">🎯 Savings Tracker</div>
+            <div class="tab" id="tab-btn-sinking-funds" onclick="switchTab('sinking-funds')">🌱 Future Goals</div>
+            <div class="tab" id="tab-btn-expenses" onclick="switchTab('expenses')">📝 Expenses & Budgets</div>
+            <div class="tab" id="tab-btn-overtime" onclick="switchTab('overtime')">⏰ Smart OT Allocator</div>
+            <div class="tab" id="tab-btn-summary" onclick="switchTab('summary')">📊 Financial Summary</div>
+        </div>
+
+        <div id="salary-tab" class="tab-content">
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 class="card-title">Monthly Salary Input with Auto-Deductions</h3>
+                    <button class="btn btn-info" onclick="copyLastMonthSalary()">⎘ Copy Last Month's Salary</button>
+                </div>
+                
+                <div class="alert alert-info">
+                    ℹ️ Your salary and deduction information is auto-saved whenever you make a change.
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Basic Salary (RM)</label>
+                        <input type="number" id="basicSalary" value="3700" step="0.01" oninput="autoCalculateDeductions()">
+                    </div>
+                    <div class="form-group">
+                        <label>Claims (RM)</label>
+                        <input type="number" id="claims" placeholder="0.00" step="0.01" oninput="updateAndSaveSalary()">
+                    </div>
+                    <div class="form-group">
+                        <label>HP Allowance (RM)</label>
+                        <input type="number" id="hpAllowance" value="80" step="0.01" oninput="updateAndSaveSalary()">
+                    </div>
+                    <div class="form-group">
+                        <label>Incentive (RM)</label>
+                        <input type="number" id="incentive" value="500" step="0.01" oninput="updateAndSaveSalary()">
+                    </div>
+                    <div class="form-group">
+                        <label>Bonus (RM)</label>
+                        <input type="number" id="bonus" placeholder="0.00" step="0.01" oninput="updateAndSaveSalary()">
+                    </div>
+                    <div class="form-group">
+                        <label>Other Income (RM)</label>
+                        <input type="number" id="otherIncome" placeholder="0.00" step="0.01" oninput="updateAndSaveSalary()">
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 20px; margin-bottom: 15px;">Auto-Calculated Deductions</h4>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>EPF (11%) - Auto</label>
+                        <input type="number" id="epf" value="407" step="0.01" readonly style="background: #f0f0f0;">
+                    </div>
+                    <div class="form-group">
+                        <label>SOCSO - Auto</label>
+                        <input type="number" id="socso" value="29.75" step="0.01" readonly style="background: #f0f0f0;">
+                    </div>
+                    <div class="form-group">
+                        <label>EIS - Auto</label>
+                        <input type="number" id="eis" value="11.90" step="0.01" readonly style="background: #f0f0f0;">
+                    </div>
+                    <div class="form-group">
+                        <label>PCB (Tax) - Auto</label>
+                        <input type="number" id="pcb" placeholder="0.00" step="0.01" readonly style="background: #f0f0f0;">
+                    </div>
+                    <div class="form-group">
+                        <label>Cash Advance (RM)</label>
+                        <input type="number" id="cashAdvance" placeholder="0.00" step="0.01" oninput="updateAndSaveSalary()">
+                    </div>
+                    <div class="form-group">
+                        <label>Other Deductions (RM)</label>
+                        <input type="number" id="otherDeductions" placeholder="0.00" step="0.01" oninput="updateAndSaveSalary()">
+                    </div>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetSalaryForm()">Reset Form</button>
+            </div>
+        </div>
+
+        <div id="targets-tab" class="tab-content">
+            <div class="form-section">
+                <h3 class="card-title">Savings Target & OT Planner</h3>
+                
+                <div class="alert alert-success">
+                    💡 Set your monthly savings target. The system will calculate the overtime you need to work **this OT period** to help achieve your savings goal **next month**.
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Target Monthly Savings (RM)</label>
+                        <input type="number" id="targetSavings" placeholder="How much do you want to save?" step="50">
+                    </div>
+                    <div class="form-group">
+                        <label id="expectedExpensesLabel">Expected Monthly Expenses <span id="expenseBasisLabel">(Your Share)</span></label>
+                        <input type="number" id="expectedExpenses" placeholder="Auto-filled from tracker" step="50">
+                    </div>
+                    <div class="form-group">
+                        <label>Emergency Fund Goal (RM)</label>
+                        <input type="number" id="emergencyFundGoal" placeholder="Target emergency fund" step="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Current Emergency Fund (RM)</label>
+                        <input type="number" id="currentEmergencyFund" placeholder="Current saved amount" step="100">
+                    </div>
+                </div>
+                <label class="form-group checkbox-group" style="margin-top:8px; margin-bottom: 20px;">
+                  <input type="checkbox" id="useHouseholdExpenses" style="width: 20px; height: 20px;">
+                  Use household expenses (full amount) for planning
+                </label>
+                                
+                <div id="savingsAnalysis" style="margin-top: 30px; display: none;">
+                    <h4>Next Month's Savings Projection</h4>
+                    <div class="alert" id="savingsAlert"></div>
+                     <div id="aiCoachSection" class="alert alert-warning" style="display: none;">
+                        <h4>💡 AI Savings Coach</h4>
+                        <p id="aiCoachText"></p>
+                        <div id="aiCoachSuggestions"></div>
+                        <button id="applySavingsPlanBtn" class="btn btn-small btn-success" style="margin-top: 10px; display:none;" onclick="applyAISavingsPlan()">Apply This Savings Plan</button>
+                    </div>
+                    
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="stat-label">Base Net Income</div>
+                            <div style="font-size: 1.5em; font-weight: bold;" id="baseNetIncome">RM 0.00</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="stat-label">After Your Expenses</div>
+                            <div style="font-size: 1.5em; font-weight: bold;" id="afterExpenses">RM 0.00</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="stat-label">OT Needed for Next Month's Goal</div>
+                            <div style="font-size: 1.5em; font-weight: bold; color: #ff9800;" id="otRequired">RM 0.00</div>
+                             <button id="createOTPlanBtn" class="btn btn-small" style="margin-top: 10px;" onclick="createOTPlan()">Create OT Plan for this Target</button>
+                        </div>
+                        <div class="summary-item">
+                            <div class="stat-label">Hours to Work This Period</div>
+                            <div style="font-size: 1.5em; font-weight: bold; color: #2196f3;" id="hoursNeeded">0 hrs</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mini-simulator" id="miniSimulatorSection" style="display: none;">
+                        <h4>How can I reduce my needed OT?</h4>
+                        <div class="mini-simulator-controls">
+                            <span>If I reduce my</span>
+                            <select id="miniSimExpenseCategory" class="form-group" style="width: auto; padding: 5px;" onchange="runMiniSimulator()"></select>
+                            <span>spending by</span>
+                            <input type="number" id="miniSimExpenseReduction" class="form-group" style="width: 80px; padding: 5px;" value="10" oninput="runMiniSimulator()">
+                            <span>%...</span>
+                        </div>
+                        <div id="miniSimulatorResult" class="mini-simulator-result"></div>
+                    </div>
+
+                </div>
+                
+                <h4 style="margin-top: 30px; padding-top: 30px; border-top: 1px solid #e0e0e0; display: flex; align-items: center;">
+                    Current Month's Savings Status
+                    <div class="tooltip-container">
+                        <span class="tooltip-icon">i</span>
+                        <span class="tooltip-text">This bar shows your savings progress for the CURRENT month, based on the salary you've already received. The overtime you are planning now will count towards NEXT month's savings.</span>
+                    </div>
+                </h4>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="savingsProgress" style="width: 0%">0%</div>
+                </div>
+                 <button class="btn btn-success" id="logSavingsBtn" onclick="logSavingsAsExpense()" style="width: 100%; margin-top: 15px;">Log Current Surplus to Expenses</button>
+                
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="stat-label">This Month Saved</div>
+                        <div style="font-size: 1.5em; font-weight: bold; color: #4caf50;" id="monthSaved">RM 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="stat-label">YTD Savings</div>
+                        <div style="font-size: 1.5em; font-weight: bold; color: #9c27b0;" id="ytdSavings">RM 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="stat-label">Months to Emergency Fund</div>
+                        <div style="font-size: 1.5em; font-weight: bold;" id="monthsToGoal">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-section">
+                <h3 class="card-title">🥇 Gold Investment</h3>
+                <div class="alert alert-info">
+                    Use this to track your gold investment for the current month. Logging it will create a "Savings & Investments" expense. You can only log one gold investment per month.
+                </div>
+                <div class="form-grid" style="grid-template-columns: 2fr 1fr; align-items: end; gap: 15px;">
+                    <div class="form-group">
+                        <label for="goldInvestmentAmount">Investment Amount (RM)</label>
+                        <input type="number" id="goldInvestmentAmount" class="form-group" placeholder="e.g., 100" step="10">
+                    </div>
+                    <button id="logGoldInvestmentBtn" class="btn btn-success" onclick="logGoldInvestment()">Log Gold Investment</button>
+                </div>
+            </div>
+            <div class="form-section">
+                <h3 class="card-title">🍯 Savings Pots</h3>
+                <div class="alert alert-info">
+                    Use Savings Pots for smaller, flexible goals. Add funds to them anytime, and they'll be logged as a 'Savings & Investments' expense.
+                </div>
+                <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr; align-items: end;">
+                     <div class="form-group">
+                        <label>Pot Name</label>
+                        <input type="text" id="potName" placeholder="e.g., New Phone">
+                    </div>
+                    <div class="form-group">
+                        <label>Target Amount (RM)</label>
+                        <input type="number" id="potTotal" step="50" placeholder="e.g., 500">
+                    </div>
+                    <button class="btn btn-success" onclick="addSavingsPot()">Add Pot</button>
+                </div>
+                <div id="savingsPotsContainer" class="sinking-funds-grid"></div>
+            </div>
+        </div>
+
+        <div id="sinking-funds-tab" class="tab-content">
+            <div class="form-section">
+                <h3 class="card-title">Add a New Future Goal</h3>
+                <div class="alert alert-info">
+                    Use this section to plan for large, upcoming expenses. The system will calculate a monthly savings amount to ensure you're prepared.
+                </div>
+                <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+                    <div class="form-group">
+                        <label>Goal Name</label>
+                        <input type="text" id="fundName" placeholder="e.g., Car Insurance 2026">
+                    </div>
+                    <div class="form-group">
+                        <label>Total Amount Needed (RM)</label>
+                        <input type="number" id="fundTotal" step="50" placeholder="e.g., 2500">
+                    </div>
+                    <div class="form-group">
+                        <label>Due Date</label>
+                        <input type="text" id="fundDueDate" placeholder="Select a future date...">
+                    </div>
+                    <div class="form-group">
+                        <label>Icon</label>
+                        <select id="fundIcon">
+                            <option value="💰">💰</option>
+                            <option value="🚗">🚗</option>
+                            <option value="✈️">✈️</option>
+                            <option value="🏠">🏠</option>
+                            <option value="🎓">🎓</option>
+                            <option value="🎁">🎁</option>
+                            <option value="🎉">🎉</option>
+                            <option value="💻">💻</option>
+                            <option value="💍">💍</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-success" onclick="addSinkingFund()">🌱 Add New Goal</button>
+            </div>
+            <div class="form-section">
+                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                    <h3 class="card-title" style="margin: 0;">Your Active Goals</h3>
+                    <div>
+                         <button class="btn btn-info" onclick="allocateAllGoals()">✅ Allocate All</button>
+                         <button class="btn btn-secondary" id="toggleArchivedBtn" onclick="toggleShowArchived()">👁️ Show Archived</button>
+                    </div>
+                </div>
+                <div id="sinkingFundsContainer" class="sinking-funds-grid"></div>
+                <div id="archivedSinkingFundsContainer" class="sinking-funds-grid archived-grid" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div id="expenses-tab" class="tab-content">
+            <div class="sub-tabs">
+                <div class="sub-tab active" id="sub-tab-btn-expenses-tracker" onclick="switchSubTab('expenses-tracker', 'expenses-tab')">📝 Expenses Tracker</div>
+                <div class="sub-tab" id="sub-tab-btn-budgeting-view" onclick="switchSubTab('budgeting-view', 'expenses-tab')">💰 Budgeting</div>
+            </div>
+
+            <div id="expenses-tracker-sub-tab-content" class="sub-tab-content active">
+                <div class="form-section">
+                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                        <h3 class="card-title" style="margin-bottom: 0;">Expenses Tracker</h3>
+                        <div class="btn-group-actions">
+                            <button class="btn btn-success" onclick="applyRecurringExpenses()">➕ Apply Recurring</button>
+                            <button class="btn btn-info" onclick="copyLastMonthExpenses()">⎘ Copy Last Month's</button>
+                            <button class="btn btn-secondary" onclick="openManageCategoriesModal()">⚙️ Manage Categories</button>
+                            <button class="btn btn-danger" onclick="clearAllExpenses()">🗑️ Clear All Expenses</button>
+                        </div>
+                    </div>
+
+                    <div id="budgetSnapshotContainer">
+                        <div class="budget-snapshot-header">
+                            <h4>Budget Snapshot</h4>
+                            <div class="form-group">
+                                <select id="budgetSnapshotSort" onchange="displayBudgetSnapshot()">
+                                    <option value="remaining_asc">Sort: Least Remaining</option>
+                                    <option value="percent_desc">Sort: Highest % Used</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="budgetSnapshotItems" class="budget-snapshot-grid"></div>
+                    </div>
+                    
+                    <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="text" id="expenseDate" placeholder="Select Date...">
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="expenseCategory">
+                                <!-- Options populated by JS -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Your Share (RM)</label>
+                            <input type="number" id="myShare" step="0.01" oninput="updateShares('mine')">
+                        </div>
+                         <div class="form-group">
+                            <label>Partner's Share (RM)</label>
+                            <input type="number" id="partnerShare" step="0.01" oninput="updateShares('partner')">
+                        </div>
+                        <div class="form-group">
+                            <label>Full Amount (RM)</label>
+                            <input type="number" id="expenseFullAmount" step="0.01" readonly style="background: #f0f0f0;">
+                        </div>
+                        <div class="form-group">
+                            <label>Split Profile</label>
+                            <select id="expenseSplitProfile" onchange="applySplitProfile()">
+                                <option value="custom">Custom</option>
+                                <option value="mine100">You Pay 100%</option>
+                                <option value="partner100">Partner Pays 100%</option>
+                                <option value="equal50">Split 50/50</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / span 2;">
+                            <label>Description</label>
+                            <input type="text" id="expenseDescription">
+                        </div>
+                        <div class="form-group checkbox-group">
+                             <label for="isRecurringExpense">Is Recurring?</label>
+                            <input type="checkbox" id="isRecurringExpense" style="width: 20px; height: 20px;">
+                        </div>
+                        <!-- START: New Installment Fields -->
+                        <div class="form-group checkbox-group">
+                            <label for="isInstallment">Is Installment?</label>
+                            <input type="checkbox" id="isInstallment" style="width: 20px; height: 20px;" onchange="toggleInstallmentFields()">
+                        </div>
+                        <div id="installmentFields" class="form-grid" style="grid-column: 1 / -1; display: none; margin-bottom: 0; padding: 10px; background-color: rgba(0,0,0,0.05); border-radius: 8px;">
+                            <div class="form-group">
+                                <label>Current #</label>
+                                <input type="number" id="currentInstallment" placeholder="e.g., 3">
+                            </div>
+                            <div class="form-group">
+                                <label>Total #</label>
+                                <input type="number" id="totalInstallments" placeholder="e.g., 6">
+                            </div>
+                        </div>
+                        <!-- END: New Installment Fields -->
+                    </div>
+                    
+                    <button id="addExpenseBtn" class="btn" onclick="addExpense()">Add Expense</button>
+                    
+                    <!-- START: New Filter Controls -->
+                    <div class="expense-filters">
+                        <div class="expense-filters-header">
+                            <h4>Filter & Search</h4>
+                            <button class="btn btn-secondary btn-small" onclick="clearExpenseFilters()">Clear Filters</button>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Filter by Category</label>
+                                <select id="filterExpenseCategory" onchange="displayExpenses()"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Search Description</label>
+                                <input type="text" id="filterExpenseDescription" placeholder="e.g., coffee, monthly bill..." oninput="displayExpenses()">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END: New Filter Controls -->
+
+                    <table id="expenseTable">
+                        <thead>
+                            <tr>
+                                <th class="sortable" onclick="sortExpenses('date')">Date</th>
+                                <th class="sortable" onclick="sortExpenses('category')">Category</th>
+                                <th class="sortable" onclick="sortExpenses('description')">Description</th>
+                                <th>Split</th>
+                                <th class="sortable" onclick="sortExpenses('myShare')">My Share</th>
+                                <th class="sortable" onclick="sortExpenses('partnerShare')">Partner's Share</th>
+                                <th class="sortable" onclick="sortExpenses('fullAmount')">Full Amount</th>
+                                <th>Recurring</th>
+                                <th>Exclude</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenseTableBody">
+                        </tbody>
+                        <tfoot id="expenseTableFooter">
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div id="budgeting-view-sub-tab-content" class="sub-tab-content">
+                <div class="form-section">
+                    <h3 class="card-title">Monthly Budgeting</h3>
+                     <div class="btn-group" style="margin-top: 0;">
+                        <button class="btn btn-success" onclick="launchAllocationPlanner()">💰 Plan This Month's Budget</button>
+                        <button class="btn btn-info" onclick="copyLastMonthBudgets()">⎘ Copy Last Month's Budgets</button>
+                        <button class="btn btn-danger" onclick="clearAllBudgets()">🗑️ Clear All Budgets</button>
+                    </div>
+
+                    <div class="budget-controls">
+                        <div class="form-group">
+                            <label for="budgetSortOrder">Sort By</label>
+                            <select id="budgetSortOrder" onchange="displayBudgets()">
+                                <option value="percent_desc">Highest % Used</option>
+                                <option value="default">Default</option>
+                                <option value="overspent">Most Overspent</option>
+                                <option value="remaining_asc">Least Remaining</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display: none;">
+                            <label for="addBudgetCategory">Add Budget For</label>
+                            <div class="add-budget-group">
+                                <select id="addBudgetCategory">
+                                    <!-- Options will be populated by JS -->
+                                </select>
+                                <button class="btn btn-small" onclick="addBudgetCategoryCard()">Add</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-grid" id="budgetSummary">
+                         <div class="summary-item tooltip-container">
+                            <div class="stat-label">Total Budgeted</div>
+                            <div style="font-size: 1.8em; font-weight: bold; color: #17a2b8;">RM 0.00</div>
+                            <span class="tooltip-text">The total amount you have planned to spend across all categories.</span>
+                        </div>
+                        <div class="summary-item tooltip-container">
+                            <div class="stat-label">Total Spent</div>
+                            <div style="font-size: 1.8em; font-weight: bold; color: #dc3545;">RM 0.00</div>
+                             <span class="tooltip-text">The total amount you have actually spent across all categories so far.</span>
+                        </div>
+                        <div class="summary-item tooltip-container">
+                            <div class="stat-label">Remaining in Budget</div>
+                            <div style="font-size: 1.8em; font-weight: bold;">RM 0.00</div>
+                             <span class="tooltip-text">A simple calculation of 'Total Budgeted' minus 'Total Spent'. This can be misleading if you have overspent in any category.</span>
+                        </div>
+                        <div class="summary-item tooltip-container">
+                            <div class="stat-label">Left To Assign</div>
+                            <div style="font-size: 1.8em; font-weight: bold;">RM 0.00</div>
+                             <span class="tooltip-text">Your Net Income minus your 'Total Budgeted' amount. This is the money from your income that has not been given a job yet.</span>
+                        </div>
+                    </div>
+
+                    <!-- START: New Overbudget Preview Card -->
+                    <div id="overbudget-preview-card" class="summary-grid">
+                        <div class="summary-item summary-item-warning tooltip-container">
+                            <div class="stat-label">Real Remaining in Budget</div>
+                            <div id="expectedRemainingBudget" style="font-size: 1.8em; font-weight: bold;"></div>
+                            <span class="tooltip-text">The actual cash left to spend. This is the sum of all money remaining ONLY in categories you haven't overspent.</span>
+                        </div>
+                        <div class="summary-item summary-item-warning tooltip-container">
+                            <div class="stat-label">Effective Left to Assign</div>
+                            <div id="expectedLeftToAssign" style="font-size: 1.8em; font-weight: bold;"></div>
+                            <span class="tooltip-text">The true amount of un-budgeted money you have left after covering all overspending from other categories.</span>
+                        </div>
+                    </div>
+                    <!-- END: New Overbudget Preview Card -->
+
+                    <div id="budgetContainer" class="budget-grid">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="overtime-tab" class="tab-content">
+            <div class="form-section">
+                <h3 class="card-title">Smart Overtime Allocator</h3>
+                
+                <div class="alert alert-info">
+                    🤖 Plan your overtime for the <strong>current period</strong> here. The earnings will be reflected in <strong>next month's</strong> salary.
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Target OT Earnings (RM)</label>
+                        <input type="number" id="targetOTEarnings" placeholder="Enter target OT amount" step="0.01" oninput="debouncedAllocation()">
+                    </div>
+                    <div class="form-group">
+                        <label>Project/Task Name (Hold Ctrl/Cmd to select multiple)</label>
+                        <div class="project-group">
+                            <select id="defaultProject" multiple></select>
+                            <button class="btn btn-small btn-secondary" onclick="openManageProjectsModal()">Manage</button>
+                        </div>
+                    </div>
+                     <div class="form-group">
+                        <label>Allocation Strategy</label>
+                        <select id="allocationStrategy">
+                            <option value="balanced">Balanced (Default)</option>
+                            <option value="front-load-weekends">Front-load Weekends</option>
+                            <option value="front-load-weekdays">Front-load Weekdays</option>
+                            <option value="back-load">Back-load</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 20px; margin-bottom: 15px;">Daily Hour Limits (Optional)</h4>
+                <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                    <div class="form-group">
+                        <label>Max Weekday Hours</label>
+                        <input type="number" id="maxHoursWeekday" placeholder="Default: 8" step="0.25" oninput="debouncedAllocation()">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Saturday Hours</label>
+                        <input type="number" id="maxHoursSaturday" placeholder="Default: 8" step="0.25" oninput="debouncedAllocation()">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Sunday Hours</label>
+                        <input type="number" id="maxHoursSunday" placeholder="Default: 8" step="0.25" oninput="debouncedAllocation()">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Public Holiday Hours</label>
+                        <input type="number" id="maxHoursPH" placeholder="Default: 8" step="0.25" oninput="debouncedAllocation()">
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 20px; margin-bottom: 15px;">Custom Dates</h4>
+                <div class="form-grid" style="grid-template-columns: 1fr;">
+                    <div class="form-group">
+                        <label>Custom Public Holidays (2.0x Rate)</label>
+                        <input type="text" id="customPublicHolidays" placeholder="Select any additional dates to treat as public holidays...">
+                    </div>
+                </div>
+                
+                <button class="btn btn-success" onclick="generateAndApplyOT()">🚀 Generate & Apply Schedule</button>
+                <button class="btn btn-warning" onclick="previewOTAllocation()">👁️ Preview Allocation</button>
+                <button class="btn" onclick="applyOTAllocation()">✅ Apply Allocation</button>
+                <button class="btn btn-info" onclick="exportOTEntries()">📤 Export OT</button>
+                <button class="btn btn-secondary" onclick="triggerOTImport()">📥 Import OT</button>
+                
+                <div id="otAllocationPreview" class="ot-allocation-preview" style="display: none;">
+                    <h4>Preview: Smart OT Allocation</h4>
+                    <div id="previewContent"></div>
+                </div>
+                
+                <div id="sticky-ot-summary" style="display: none;">
+                    <div class="form-section" style="padding-bottom: 15px; margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0;">
+                        <h4 class="card-title">📊 OT Hours Adjuster</h4>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <div class="stat-label">Total OT Hours</div>
+                                <div style="font-size: 1.5em; font-weight: bold;" id="totalOTHoursSummary">0</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="stat-label">Total OT Earnings</div>
+                                <div style="font-size: 1.5em; font-weight: bold;" id="totalOTEarningsSummary">RM 0.00</div>
+                            </div>
+                        </div>
+                         <div id="otTargetProgressBarContainer" style="margin-top: 15px; display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="otTargetProgress" style="width: 0%; background: linear-gradient(90deg, #28a745, #20c997);">0%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="otAdjuster" class="form-section" style="display: none; margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0;">
+                    <div class="alert alert-info" style="margin-top: 15px;">
+                        Use the buttons to proportionally adjust the total hours for each day type.
+                    </div>
+                    <div class="form-grid" id="otAdjusterGrid">
+                        </div>
+                    <div class="percentage-group">
+                        <h4>Rate Allocation Percentage</h4>
+                        <div class="percentage-input-container">
+                            <label>0.5x (Sunday)</label>
+                            <div class="input-group">
+                                <button onclick="adjustPercentage('rate0_5', -1)">-</button>
+                                <input type="number" id="rate0_5_input" class="percentage-input" min="0" max="100" step="1" value="10">
+                                <button onclick="adjustPercentage('rate0_5', 1)">+</button>
+                            </div>
+                        </div>
+                        <div class="percentage-input-container">
+                            <label>1.5x (Weekday)</label>
+                            <div class="input-group">
+                                <button onclick="adjustPercentage('rate1_5_weekday', -1)">-</button>
+                                <input type="number" id="rate1_5_weekday_input" class="percentage-input" min="0" max="100" step="1" value="70">
+                                <button onclick="adjustPercentage('rate1_5_weekday', 1)">+</button>
+                            </div>
+                        </div>
+                        <div class="percentage-input-container">
+                            <label>1.5x (Saturday)</label>
+                            <div class="input-group">
+                                <button onclick="adjustPercentage('rate1_5_saturday', -1)">-</button>
+                                <input type="number" id="rate1_5_saturday_input" class="percentage-input" min="0" max="100" step="1" value="10">
+                                <button onclick="adjustPercentage('rate1_5_saturday', 1)">+</button>
+                            </div>
+                        </div>
+                        <div class="percentage-input-container">
+                            <label>2.0x (Public Holiday)</label>
+                            <div class="input-group">
+                                <button onclick="adjustPercentage('rate2_0', -1)">-</button>
+                                <input type="number" id="rate2_0_input" class="percentage-input" min="0" max="100" step="1" value="10">
+                                <button onclick="adjustPercentage('rate2_0', 1)">+</button>
+                            </div>
+                        </div>
+                        <div id="totalPercentage">Total: 100%</div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin-top: 30px;">Current OT Entries</h4>
+                    <button class="btn btn-small btn-danger" onclick="deleteAllOTEntries()">Delete All</button>
+                </div>
+                <div id="otCalendar"></div>
+            </div>
+        </div>
+
+        <div id="summary-tab" class="tab-content">
+            <div class="form-section">
+                <div style="display:flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <h3 class="card-title" style="margin-bottom:0;">Financial Summary Dashboard</h3>
+                    <div>
+                        <button class="btn btn-success" onclick="generateSettleUpReport()">🤝 Settle Up Report</button>
+                        <button id="summaryViewToggle" class="btn btn-info" onclick="toggleSummaryView()">View: My Cash Flow</button>
+                    </div>
+                </div>
+                
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="stat-label">Gross Income</div>
+                        <div style="font-size: 1.8em; font-weight: bold; color: #4caf50;" id="summaryGross">RM 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="stat-label">Total Deductions</div>
+                        <div style="font-size: 1.8em; font-weight: bold; color: #ff9800;" id="summaryDeductions">RM 0.00</div>
+                    </div>
+                     <div class="summary-item">
+                        <div class="stat-label">Base Net Salary</div>
+                        <div style="font-size: 1.8em; font-weight: bold; color: #17a2b8;" id="summaryBaseNet">RM 0.00</div>
+                    </div>
+                     <div class="summary-item">
+                        <div class="stat-label">Net Income</div>
+                        <div style="font-size: 1.8em; font-weight: bold; color: #2196f3;" id="summaryNet">RM 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="stat-label" id="summaryExpensesLabel">Expenses (Your Share)</div>
+                        <div style="font-size: 1.8em; font-weight: bold; color: #dc3545;" id="summaryExpenses">RM 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="stat-label">Personal Savings</div>
+                        <div style="font-size: 1.8em; font-weight: bold; color: #9c27b0;" id="summarySavings">RM 0.00</div>
+                    </div>
+                    <div class="summary-item" id="summaryHouseholdCoverageItem" style="display: none;">
+                        <div class="stat-label">Household Coverage</div>
+                        <div style="font-size: 1.8em; font-weight: bold;" id="summaryHouseholdCoverage">RM 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="stat-label">Savings Rate</div>
+                        <div style="font-size: 1.8em; font-weight: bold;" id="savingsRate">0%</div>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 30px;">Income Breakdown</h4>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="stat-label">Basic Salary</div>
+                        <div style="font-size: 1.2em; font-weight: bold;" id="incomeBasic">RM 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="stat-label">Overtime Paid</div>
+                        <div style="font-size: 1.2em; font-weight: bold;" id="incomeOT">RM 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="stat-label">Allowances</div>
+                        <div style="font-size: 1.2em; font-weight: bold;" id="incomeAllowances">RM 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="stat-label">Other Income</div>
+                        <div style="font-size: 1.2em; font-weight: bold;" id="incomeOthers">RM 0.00</div>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 30px;" id="categoryBreakdownTitle">Expense Breakdown by Category (Your Share)</h4>
+                <div id="categoryBreakdown" class="summary-grid"></div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <div id="simulator-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeSimulator()">&times;</span>
+            <h2>シ What-If Scenario Simulator</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Salary Increase (RM/month)</label>
+                    <input type="number" id="simSalaryIncrease" placeholder="e.g., 200" oninput="runSimulation()">
+                </div>
+                <div class="form-group">
+                    <label>New Recurring Expense (Your Share) (RM/month)</label>
+                    <input type="number" id="simNewExpense" placeholder="e.g., 600" oninput="runSimulation()">
+                </div>
+                <div class="form-group">
+                    <label>Reduce an Expense Category (%)</label>
+                    <select id="simExpenseCategory" onchange="runSimulation()">
+                        </select>
+                </div>
+                <div class="form-group">
+                    <label>Reduction Percentage</label>
+                    <input type="number" id="simExpenseReduction" placeholder="e.g., 10" oninput="runSimulation()">
+                </div>
+                 <div class="form-group">
+                    <label>Partner Adds (RM/month)</label>
+                    <input type="number" id="simPartnerContribution" placeholder="e.g., 500" oninput="runSimulation()">
+                </div>
+            </div>
+            <div id="simulationResult" class="alert alert-success" style="margin-top: 20px;">
+                Enter a value to see the impact on your savings.
+            </div>
+        </div>
+    </div>
+
+    <div id="settleup-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeSettleUp()">&times;</span>
+            <h2>🤝 Settle Up Report</h2>
+            <div id="settleup-content"></div>
+        </div>
+    </div>
+    
+    <div id="detailed-pdf-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeDetailedPDFModal()">&times;</span>
+            <h2>✨ Export Detailed PDF Report</h2>
+            <p style="margin-bottom: 20px;">Customize and generate a comprehensive visual summary of your finances for this period.</p>
+            <div class="form-group">
+                <label for="detailedReportTitle">Report Title</label>
+                <input type="text" id="detailedReportTitle" placeholder="e.g., Monthly Financial Summary">
+            </div>
+             <div class="form-group">
+                <label for="detailedThemeColor">Theme Color</label>
+                <input type="color" id="detailedThemeColor" value="#667eea" style="padding: 5px; height: 50px;">
+            </div>
+            <div class="form-group">
+                <label for="includeExcludedExpenses">Include Excluded Expenses in Report?</label>
+                <input type="checkbox" id="includeExcludedExpenses" style="width: 20px; height: 20px;">
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="exportDetailedPDF()">Download Detailed Report</button>
+        </div>
+    </div>
+
+    <div id="expenses-only-pdf-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeExpensesOnlyPDFModal()">&times;</span>
+            <h2>📝 Export Expenses Only Report</h2>
+            <p style="margin-bottom: 20px;">Generate a PDF report showing only your expenses.</p>
+            <div class="form-group">
+                <label for="expensesOnlyReportTitle">Report Title</label>
+                <input type="text" id="expensesOnlyReportTitle" placeholder="e.g., Monthly Expenses Summary">
+            </div>
+             <div class="form-group">
+                <label for="expensesOnlyThemeColor">Theme Color</label>
+                <input type="color" id="expensesOnlyThemeColor" value="#dc3545" style="padding: 5px; height: 50px;">
+            </div>
+            <div class="form-group">
+                <label for="expensesOnlyIncludeExcludedExpenses">Include Excluded Expenses in Report?</label>
+                <input type="checkbox" id="expensesOnlyIncludeExcludedExpenses" style="width: 20px; height: 20px;">
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="exportExpensesOnlyPDF()">Download Expenses Only Report</button>
+        </div>
+    </div>
+
+    <div id="ot-only-pdf-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeOTOnlyPDFModal()">&times;</span>
+            <h2>⏰ Export Overtime Only Report</h2>
+            <p style="margin-bottom: 20px;">Generate a PDF report showing only your overtime entries.</p>
+            <div class="form-group">
+                <label for="otOnlyReportTitle">Report Title</label>
+                <input type="text" id="otOnlyReportTitle" placeholder="e.g., Monthly Overtime Summary">
+            </div>
+             <div class="form-group">
+                <label for="otOnlyThemeColor">Theme Color</label>
+                <input type="color" id="otOnlyThemeColor" value="#667eea" style="padding: 5px; height: 50px;">
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="exportOTOnlyPDF()">Download Overtime Only Report</button>
+        </div>
+    </div>
+    
+    <div id="export-as-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeExportAsModal()">&times;</span>
+            <h2>📤 Export Data As...</h2>
+            <p style="margin-bottom: 20px;">Choose a format and data set to export.</p>
+            <div class="btn-group" style="margin-top: 20px;">
+                 <button class="btn btn-info" onclick="exportData()">
+                    <span style="font-size: 1.2em; margin-right: 12px;">💾</span>
+                    <div>
+                        Full Backup (.json)
+                        <p>Saves all your data for re-importing later.</p>
+                    </div>
+                 </button>
+                 <button class="btn btn-success" onclick="exportExpensesCSV()">
+                    <span style="font-size: 1.2em; margin-right: 12px;">📝</span>
+                    <div>
+                        Expenses (.csv)
+                        <p>A detailed list of your expenses.</p>
+                    </div>
+                 </button>
+                 <button class="btn btn-success" onclick="exportOvertimeCSV()">
+                    <span style="font-size: 1.2em; margin-right: 12px;">⏰</span>
+                    <div>
+                        Overtime (.csv)
+                        <p>A detailed list of your OT entries.</p>
+                    </div>
+                 </button>
+                 <button class="btn" onclick="launchDetailedPDFModal()">
+                    <span style="font-size: 1.2em; margin-right: 12px;">✨</span>
+                    <div>
+                        Full Financial Report (.pdf)
+                        <p>A beautiful multi-page summary with all details.</p>
+                    </div>
+                 </button>
+                 <button class="btn btn-danger" onclick="launchExpensesOnlyPDFModal()">
+                    <span style="font-size: 1.2em; margin-right: 12px;">📝</span>
+                    <div>
+                        Expenses Only (.pdf)
+                        <p>A report solely for your expenses.</p>
+                    </div>
+                 </button>
+                 <button class="btn btn-primary" onclick="launchOTOnlyPDFModal()">
+                    <span style="font-size: 1.2em; margin-right: 12px;">⏰</span>
+                    <div>
+                        Overtime Only (.pdf)
+                        <p>A report solely for your overtime entries.</p>
+                    </div>
+                 </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="recurring-prompt-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeRecurringPrompt()">&times;</span>
+            <h2>It's a New Month!</h2>
+            <p id="recurringPromptText" style="margin: 15px 0;">You have X recurring expenses. Would you like to add them now?</p>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeRecurringPrompt()">Maybe Later</button>
+                <button class="btn btn-success" onclick="applyRecurringFromPrompt()">Yes, Add Them</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="topup-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeTopUpModal()">&times;</span>
+            <h2 id="topUpModalTitle">How would you like to meet your savings goal?</h2>
+            <p id="topUpModalText" style="margin: 15px 0; text-align: center; font-size: 1.1em;"></p>
+            <div class="btn-group" style="margin-top: 20px;">
+                <button class="btn btn-success" onclick="topUpFromClaims()">🧾 Top Up From Claims</button>
+                <button class="btn" onclick="planOTForTarget()">⏰ Plan More OT (for Next Month)</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="ot-edit-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeOTEditModal()">&times;</span>
+            <h2>Edit Overtime Entry</h2>
+            <input type="hidden" id="otEditId">
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="text" id="otEditDate">
+                </div>
+                <div class="form-group">
+                    <label>Rate</label>
+                    <select id="otEditRate" onchange="updateOTModalCalculations()">
+                        <option value="0.5">0.5x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2.0">2.0x</option>
+                        <option value="3.0">3.0x</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Start Time</label>
+                    <input type="time" id="otEditStartTime" oninput="updateOTModalCalculations('time')">
+                </div>
+                <div class="form-group">
+                    <label>End Time</label>
+                    <input type="time" id="otEditEndTime" oninput="updateOTModalCalculations('time')">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Hours</label>
+                    <div class="hours-input-group">
+                        <button onclick="adjustModalHour(-0.25)">-</button>
+                        <input type="number" step="0.25" id="otEditHours" oninput="updateOTModalCalculations('hours')">
+                        <button onclick="adjustModalHour(0.25)">+</button>
+                    </div>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1; text-align: center; margin-top: 10px;">
+                    <label>Calculated OT Earnings for this Entry</label>
+                    <div id="otEditEarningsDisplay" style="font-size: 1.5em; font-weight: bold; color: #28a745;">RM 0.00</div>
+                    <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                        Current Total OT Earnings: <strong id="otEditTotalEarningsDisplay">RM 0.00</strong>
+                    </div>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Remarks</label>
+                    <input type="text" id="otEditRemarks">
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                <button class="btn btn-danger" onclick="deleteOTEntryFromModal()">Delete Entry</button>
+                <button class="btn btn-success" onclick="saveOTEntryFromModal()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+	
+	<div id="sinking-fund-edit-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeSinkingFundEditModal()">&times;</span>
+            <h2>Edit Goal</h2>
+            <input type="hidden" id="fundEditId">
+            <div class="form-grid" style="grid-template-columns: 1fr;">
+                <div class="form-group">
+                    <label>Goal Name</label>
+                    <input type="text" id="fundEditName" placeholder="e.g., Car Insurance 2026">
+                </div>
+                <div class="form-group">
+                    <label>Total Amount Needed (RM)</label>
+                    <input type="number" id="fundEditTotal" step="50" placeholder="e.g., 2500">
+                </div>
+                 <div class="form-group">
+                    <label>Icon</label>
+                    <select id="fundEditIcon">
+                        <option value="💰">💰</option>
+                        <option value="🚗">🚗</option>
+                        <option value="✈️">✈️</option>
+                        <option value="🏠">🏠</option>
+                        <option value="🎓">🎓</option>
+                        <option value="🎁">🎁</option>
+                        <option value="🎉">🎉</option>
+                        <option value="💻">💻</option>
+                        <option value="💍">💍</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Due Date</label>
+                    <input type="text" id="fundEditDueDate" placeholder="Select a future date...">
+                </div>
+            </div>
+            <button class="btn btn-success" style="width: 100%; margin-top: 15px;" onclick="saveSinkingFundFromModal()">Save Changes</button>
+        </div>
+    </div>
+
+     <div id="add-funds-pot-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeAddFundsToPotModal()">&times;</span>
+            <h2 id="addFundsToPotTitle">Add Funds</h2>
+            <input type="hidden" id="potAddFundsId">
+            <div class="form-group">
+                <label>Amount to Add (RM)</label>
+                <input type="number" id="potAddFundsAmount" step="10" placeholder="e.g., 50">
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="addFundsToPot()">Add Funds</button>
+        </div>
+    </div>
+    
+    <div id="extra-contribution-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeExtraContributionModal()">&times;</span>
+            <h2 id="extraContributionTitle">Add Extra Contribution</h2>
+            <input type="hidden" id="fundExtraContributionId">
+            <div class="form-group">
+                <label>Amount (RM)</label>
+                <input type="number" id="fundExtraAmount" step="10" placeholder="e.g., 100">
+            </div>
+             <div class="form-group">
+                <label>Description (Optional)</label>
+                <input type="text" id="fundExtraDescription" placeholder="e.g., Birthday Money">
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="addExtraContribution()">Add Contribution</button>
+        </div>
+    </div>
+    
+    <div id="contribution-history-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeContributionHistoryModal()">&times;</span>
+            <h2 id="contributionHistoryTitle">Contribution History</h2>
+            <div id="contributionHistoryContent"></div>
+        </div>
+    </div>
+
+    <div id="manage-categories-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeManageCategoriesModal()">&times;</span>
+            <h2><span style="font-size: 1.2em; vertical-align: middle;">⚙️</span> Manage Custom Categories</h2>
+            <p style="margin-bottom: 15px;">Add, remove, or edit your own expense categories.</p>
+            <div id="customCategoriesList"></div>
+            <div class="add-category-form">
+                <div class="form-group">
+                    <label>Category Name</label>
+                    <input type="text" id="newCategoryName" placeholder="e.g., Pet Supplies">
+                </div>
+                <div class="form-group">
+                    <label>Icon</label>
+                    <div id="selectedCategoryIcon" class="icon-picker-display" onclick="toggleIconGrid()">🏷️</div>
+                </div>
+                <div class="category-button-group">
+                    <input type="hidden" id="editingCategoryValue">
+                    <button id="addCategoryBtn" class="btn" onclick="addCustomCategory()">Add Category</button>
+                    <button id="cancelEditCategoryBtn" class="btn btn-secondary" onclick="resetCategoryForm()" style="display: none;">Cancel</button>
+                </div>
+            </div>
+            <div id="iconPresetGrid" class="icon-preset-grid" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div id="manage-projects-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeManageProjectsModal()">&times;</span>
+            <h2><span style="font-size: 1.2em; vertical-align: middle;">📋</span> Manage Projects/Tasks</h2>
+            <p style="margin-bottom: 15px;">Add or remove project names for your OT entries.</p>
+            <div id="projectList"></div>
+            <div class="add-category-form">
+                <div class="form-group">
+                    <label>Project/Task Name</label>
+                    <input type="text" id="newProjectName" placeholder="e.g., New Feature Development">
+                </div>
+                <div class="category-button-group">
+                    <button class="btn" onclick="addProject()">Add Project</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="allocation-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeAllocationModal()">&times;</span>
+            <h2>💰 Monthly Allocation Planner</h2>
+            <p style="margin-bottom: 15px;">Give every RM a job. Assign your total income to your different budget categories.</p>
+            <div class="summary-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+                <div class="summary-item">
+                    <div class="stat-label">Total Net Income</div>
+                    <div id="allocNetIncome" style="font-size: 1.5em; font-weight: bold; color: #28a745;">RM 0.00</div>
+                </div>
+                <div class="summary-item">
+                    <div class="stat-label">Money Assigned</div>
+                    <div id="allocAssigned" style="font-size: 1.5em; font-weight: bold; color: #dc3545;">RM 0.00</div>
+                </div>
+                <div class="summary-item">
+                    <div class="stat-label">Left to Assign</div>
+                    <div id="allocRemaining" style="font-size: 1.5em; font-weight: bold; color: #6c757d;">RM 0.00</div>
+                </div>
+            </div>
+            <div id="allocationGrid" class="allocation-grid">
+                <!-- Allocation items will be populated by JS -->
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeAllocationModal()">Cancel</button>
+                <button class="btn btn-success" onclick="applyAllocation()">Apply Budgets</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+    
+    <script src="script.js"></script>
+</body>
+</html>
