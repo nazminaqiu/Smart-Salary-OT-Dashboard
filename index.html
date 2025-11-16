@@ -14,6 +14,52 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <style>
+        .cloud-menu-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .cloud-menu-options {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #ffffff;
+            min-width: 220px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 100;
+            border-radius: 8px;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .cloud-menu-options.show {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .cloud-menu-options button {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: flex-start;
+            text-align: left;
+            width: 100%;
+            padding: 10px;
+        }
+
+        .cloud-menu-options button span {
+            font-size: 1.2em;
+        }
+
+        /* Adjust for dark theme */
+        body.dark-theme .cloud-menu-options {
+            background-color: #3a3a3a;
+            border-color: #555;
+        }
+    </style>
 </head>
 <body>
     <div id="toast-notification" class="toast" style="display: none;"></div>
@@ -22,7 +68,16 @@
         <div class="header">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <h1>💼 Advanced Smart Salary & Overtime Tracker</h1>
-                <button class="btn btn-secondary" onclick="toggleTheme()">🌓 Toggle Theme</button>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="cloud-menu-container">
+                        <button class="btn btn-secondary" onclick="toggleCloudMenu()" title="Cloud Backup/Restore">☁️</button>
+                        <div id="cloud-menu" class="cloud-menu-options">
+                            <button class="btn btn-info" onclick="backupCurrentPeriodToCloud()"><span>⬆️</span> Backup to Cloud</button>
+                            <button class="btn btn-success" onclick="restoreCurrentPeriodFromCloud()"><span>⬇️</span> Restore from Cloud</button>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="toggleTheme()" title="Toggle Theme">🌓</button>
+                </div>
             </div>
             <div class="btn-group">
                 <button class="btn btn-warning" onclick="launchSimulator()">シ What-If Simulator</button>
@@ -938,21 +993,6 @@
                         <p>Saves all your data for re-importing later.</p>
                     </div>
                  </button>
-
-                 <button class="btn btn-secondary" onclick="backupCurrentPeriodToCloud()">
-                    <span style="font-size: 1.2em; margin-right: 12px;">☁️</span>
-                    <div>
-                        Backup Current Period to Cloud
-                        <p>Save this pay period and global settings to Firestore.</p>
-                    </div>
-                 </button>
-                 <button class="btn btn-secondary" onclick="restoreCurrentPeriodFromCloud()">
-                    <span style="font-size: 1.2em; margin-right: 12px;">☁️</span>
-                    <div>
-                        Restore Current Period from Cloud
-                        <p>Load this pay period from your Firestore backup.</p>
-                    </div>
-                 </button>
                  <button class="btn btn-success" onclick="exportExpensesCSV()">
                     <span style="font-size: 1.2em; margin-right: 12px;">📝</span>
                     <div>
@@ -1243,6 +1283,24 @@
 
       // Make Firestore available globally
       window.db = firebase.firestore();
+    </script>
+    
+    <script>
+        /* SCRIPT FOR CLOUD MENU DROPDOWN */
+        function toggleCloudMenu() {
+            document.getElementById("cloud-menu").classList.toggle("show");
+        }
+
+        // Close the dropdown if the user clicks outside of it
+        window.addEventListener('click', function(event) {
+            // Check if the click is outside the cloud menu container
+            if (!event.target.closest('.cloud-menu-container')) {
+                const dropdown = document.getElementById("cloud-menu");
+                if (dropdown.classList.contains('show')) {
+                    dropdown.classList.remove('show');
+                }
+            }
+        });
     </script>
 
     <!-- App scripts -->
