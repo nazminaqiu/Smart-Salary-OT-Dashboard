@@ -1699,11 +1699,54 @@ function switchSubTab(subTabName, mainContainerId) {
     }
 }
 
+// --- PATCH ---
+// This function handles importing data from a file.
+// Instead of reloading the page, it now uses our robust `fullAppRefresh` function
+// for a seamless update without a full page reload.
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            if (!confirm('This will overwrite all existing data. Are you sure you want to continue?')) {
+                event.target.value = ''; // Reset file input
+                return;
+            }
+            
+            localStorage.clear();
+            
+            for (const key in importedData) {
+                if (Object.prototype.hasOwnProperty.call(importedData, key)) {
+                    localStorage.setItem(key, importedData[key]);
+                }
+            }
+            
+            showToast('Data imported successfully! Refreshing UI...');
+            
+            // --- The Fix ---
+            // Instead of reloading the whole page, we call the master refresh function.
+            // This is faster, avoids cache issues, and provides a better user experience.
+            fullAppRefresh();
+            
+        } catch (error) {
+            alert('Error parsing JSON file. Please make sure it is a valid backup file.');
+            console.error("Import error:", error);
+        } finally {
+            event.target.value = ''; // Reset file input
+        }
+    };
+    reader.readAsText(file);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     applySavedTheme();
 
     if (typeof loadAppStateFromFirestore === 'function') {
-        // Try to load from Firestore in the background; do not block app boot
         loadAppStateFromFirestore()
             .then(() => {
                 console.info('Cloud state loaded; reinitializing from Firestore data.');
@@ -1741,7 +1784,6 @@ document.addEventListener('DOMContentLoaded', function() {
           if (el) el.addEventListener('input', id === 'expenseSplitProfile' ? applySplitProfile : updateShares);
       });
     
-    // Add event listener for the new sort dropdown
     document.getElementById('budgetSnapshotSort').addEventListener('change', displayBudgetSnapshot);
 
     initializePercentageInputs();

@@ -543,7 +543,27 @@ async function backupCurrentPeriodToCloud() {
     }
 }
 
-// Manual restore: load the current pay period from its own Firestore doc into localStorage.
+// --- PATCH ---
+// This function is now the single source of truth for refreshing the entire UI from scratch.
+function fullAppRefresh() {
+    const period = getCurrentPayPeriodKey();
+    if (!period) return;
+    
+    // Re-load all data from localStorage into the application's variables and populate forms
+    loadDataForPeriod(period);
+    
+    // Re-run all display updates, calculations, and table rendering
+    updateAllDisplays();
+    
+    // Special check for the calendar, which sometimes needs an explicit re-render
+    if (otCalendar) {
+        setTimeout(() => otCalendar.render(), 0);
+    }
+}
+
+
+// --- PATCH ---
+// We modify the cloud restore function to use our new robust refresh function.
 async function restoreCurrentPeriodFromCloud() {
     if (!isFirestoreReady()) {
         alert('Cloud restore is not available. Firestore is not ready.');
@@ -570,12 +590,10 @@ async function restoreCurrentPeriodFromCloud() {
         const data = snap.data();
         const dump = (data && data.localStorageDump) || {};
 
-        // Restore per-period keys
         Object.keys(dump).forEach(key => {
             localStorage.setItem(key, dump[key]);
         });
 
-        // Restore global keys from separate doc if available
         const globalRef = db.collection(FIRESTORE_APPSTATE_COLLECTION).doc(FIRESTORE_GLOBAL_DOC_ID);
         const globalSnap = await globalRef.get();
         if (globalSnap.exists) {
@@ -586,11 +604,12 @@ async function restoreCurrentPeriodFromCloud() {
             });
         }
 
-        // Re-run app initialization to reflect restored data
-        if (typeof initializeData === 'function') {
-            initializeData();
-        }
+        // Instead of calling initializeData(), we now call our powerful refresh function.
+        fullAppRefresh();
+        
         alert('Cloud restore completed for pay period ' + period + '.');
+        showToast('Cloud data restored and UI refreshed.');
+
     } catch (err) {
         console.error('Error restoring current period from Firestore:', err);
         alert('Error during cloud restore. Check console for details.');
@@ -998,7 +1017,6 @@ function initializeData() {
 function handlePayPeriodChange(newPeriod) {
     if (!newPeriod || newPeriod === currentPayPeriod) return;
     
-    // Save data for the month we are leaving
     if (localStorage.getItem(`salaryData_${currentPayPeriod}`) || expenses.length > 0 || overtimeEntries.length > 0) {
          saveDataForPeriod(currentPayPeriod);
     }
@@ -1006,8 +1024,8 @@ function handlePayPeriodChange(newPeriod) {
     currentPayPeriod = newPeriod;
     localStorage.setItem('lastPayPeriod', newPeriod);
     
-    loadDataForPeriod(newPeriod);
-    updateAllDisplays();
+    // Use the robust refresh function
+    fullAppRefresh();
     
     checkForRecurringPrompt();
 }
@@ -1024,7 +1042,6 @@ function loadDataForPeriod(period) {
         savingsGoalsData = JSON.parse(localStorage.getItem(`savingsGoalsData_${period}`) || '{}');
         budgets = JSON.parse(localStorage.getItem(`budgets_${period}`) || '{}');
 
-        // Prune orphaned budget entries that don't have a matching category definition
         const allValidCategoryKeys = [...Object.keys(categoryConfig), ...customCategories.map(c => c.value)];
         for (const budgetCategory in budgets) {
             if (!allValidCategoryKeys.includes(budgetCategory)) {
@@ -1055,15 +1072,12 @@ function loadDataForPeriod(period) {
     document.getElementById('emergencyFundGoal').value = savingsGoalsData.emergencyFundGoal || '';
     document.getElementById('currentEmergencyFund').value = savingsGoalsData.currentEmergencyFund || '';
     
-    // --- MODIFIED OT DATE LOGIC ---
     if (salaryData.customOtStartDate && salaryData.customOtEndDate) {
         startDatePicker.setDate(salaryData.customOtStartDate, false);
         endDatePicker.setDate(salaryData.customOtEndDate, false);
     } else {
-        // If no dates are saved for this specific month, set the default
         setDefaultOtDates();
     }
-    // --- END MODIFIED LOGIC ---
     
     if (salaryData.customPublicHolidays) {
         customHolidayPicker.setDate(salaryData.customPublicHolidays, false);
@@ -1083,10 +1097,8 @@ function saveDataForPeriod(period) {
         recordHistorySnapshot('Change in ' + period);
     }
     
-    // --- NEW: Save OT dates into the monthly salaryData object ---
     salaryData.customOtStartDate = document.getElementById('otStartDate').value;
     salaryData.customOtEndDate = document.getElementById('otEndDate').value;
-    // --- END NEW ---
     
     localStorage.setItem(`salaryData_${period}`, JSON.stringify(salaryData));
     localStorage.setItem(`overtimeEntries_${period}`, JSON.stringify(overtimeEntries));
@@ -1099,7 +1111,6 @@ function saveDataForPeriod(period) {
     scheduleCloudAutosave('saveDataForPeriod');
 }
 
-// START: MODIFIED updateAllDisplays function
 function updateAllDisplays() {
     autoCalculateDeductions();
     displayOTEntries();
@@ -1107,20 +1118,18 @@ function updateAllDisplays() {
     displayBudgets();
     displaySinkingFunds();
     displaySavingsPots();
-    populateCategoryDropdowns(); // Refresh the filter dropdown with relevant categories
+    populateCategoryDropdowns();
     updateGoldInvestmentStatus();
     updateDashboard();
     updateSummary();
     updateSavingsAnalysis();
 }
-// END: MODIFIED updateAllDisplays function
 
 function setDefaultOtDates() {
     const payPeriod = document.getElementById('payPeriod').value;
     if (!payPeriod) return;
     const [year, month] = payPeriod.split('-').map(Number);
     
-    // Correctly calculates the range, e.g., for Nov (11), starts in month 9 (Oct) and ends in month 10 (Nov)
     const otStartDate = new Date(year, month - 2, 26); 
     const otEndDate = new Date(year, month - 1, 25);
     
@@ -1365,7 +1374,6 @@ function closeSettingsModal() {
 document.addEventListener('DOMContentLoaded', function() {
     applySavedTheme();
 
-    // This function contains all the logic needed to start the app after data is ready.
     const startApp = () => {
         initializeData();
         validateExpenseForm();
@@ -1373,9 +1381,6 @@ document.addEventListener('DOMContentLoaded', function() {
         updateLastCloudSaveDisplay();
     };
 
-    // If Firestore is available, try to load data from it first.
-    // The .finally() block ensures that startApp() is called whether the
-    // cloud load succeeds or fails, preventing the app from getting stuck.
     if (typeof loadAppStateFromFirestore === 'function' && isFirestoreReady()) {
         loadAppStateFromFirestore()
             .catch(err => {
@@ -1386,12 +1391,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 startApp();
             });
     } else {
-        // If Firestore is not configured or available, start the app immediately with local data.
         console.info('Firestore not ready. Starting app with local data only.');
         startApp();
     }
 
-    // These event listeners are safe to initialize immediately as they don't depend on loaded data.
     document.getElementById('import-file').addEventListener('change', importData);
     document.getElementById('import-ot-file').addEventListener('change', importOTEntries);
     
