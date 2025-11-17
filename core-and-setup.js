@@ -1360,3 +1360,61 @@ function closeSettingsModal() {
         el.style.display = 'none';
     }
 }
+
+// --- PATCHED STARTUP LOGIC ---
+document.addEventListener('DOMContentLoaded', function() {
+    applySavedTheme();
+
+    // This function contains all the logic needed to start the app after data is ready.
+    const startApp = () => {
+        initializeData();
+        validateExpenseForm();
+        startCloudAutosaveHeartbeat();
+        updateLastCloudSaveDisplay();
+    };
+
+    // If Firestore is available, try to load data from it first.
+    // The .finally() block ensures that startApp() is called whether the
+    // cloud load succeeds or fails, preventing the app from getting stuck.
+    if (typeof loadAppStateFromFirestore === 'function' && isFirestoreReady()) {
+        loadAppStateFromFirestore()
+            .catch(err => {
+                console.error('Failed to load from Firestore, starting with local data.', err);
+            })
+            .finally(() => {
+                console.info('Firestore load attempt finished. Starting app...');
+                startApp();
+            });
+    } else {
+        // If Firestore is not configured or available, start the app immediately with local data.
+        console.info('Firestore not ready. Starting app with local data only.');
+        startApp();
+    }
+
+    // These event listeners are safe to initialize immediately as they don't depend on loaded data.
+    document.getElementById('import-file').addEventListener('change', importData);
+    document.getElementById('import-ot-file').addEventListener('change', importOTEntries);
+    
+    document.getElementById('targetSavings').addEventListener('input', updateAndSaveSavingsGoals);
+    document.getElementById('emergencyFundGoal').addEventListener('input', updateAndSaveSavingsGoals);
+    document.getElementById('currentEmergencyFund').addEventListener('input', updateAndSaveSavingsGoals);
+    document.getElementById('expectedExpenses').addEventListener('input', () => {
+        manualExpenseSet = true;
+        updateAndSaveSavingsGoals();
+    });
+
+    document.getElementById('useHouseholdExpenses').addEventListener('change', () => {
+        manualExpenseSet = false;
+        updateSavingsAnalysis();
+    });
+
+    ['myShare','partnerShare','expenseSplitProfile']
+      .forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener('input', id === 'expenseSplitProfile' ? applySplitProfile : updateShares);
+      });
+    
+    document.getElementById('budgetSnapshotSort').addEventListener('change', displayBudgetSnapshot);
+
+    initializePercentageInputs();
+});
