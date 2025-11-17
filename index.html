@@ -73,11 +73,15 @@
                         <span class="cloud-sync-dot"></span>
                         <span class="cloud-sync-label">Offline</span>
                     </div>
+                    <button class="btn btn-secondary" onclick="manualCloudSave()" title="Save to cloud now">💾</button>
                     <button class="btn btn-secondary" onclick="undoLastChange()" title="Undo last change">↩</button>
                     <button class="btn btn-secondary" onclick="openSettingsModal()" title="Settings &amp; data tools">⚙</button>
                     <button class="btn btn-secondary" onclick="toggleTheme()" title="Toggle Theme">🌓</button>
                 </div>
 </div>
+            </div>
+            <div class="cloud-meta">
+                Last cloud save: <span id="lastCloudSaveText">never</span>
             </div>
             <div class="btn-group">
                 <button class="btn btn-warning" onclick="launchSimulator()">シ What-If Simulator</button>

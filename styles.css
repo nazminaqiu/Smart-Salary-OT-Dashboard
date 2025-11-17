@@ -1921,35 +1921,10 @@ body.dark-theme .cloud-sync-status {
     color: #f1f1f1;
 }
 
-@media (max-width: 600px) {
-    body {
-        padding: 10px;
-    }
 
-    .header {
-        padding: 20px;
-    }
-
-    .header h1 {
-        font-size: 1.6em;
-    }
-
-    .header p {
-        font-size: 0.9em;
-    }
-
-    .card {
-        padding: 15px;
-    }
-
-    /* Make form controls span full width more comfortably */
-    .form-grid {
-        grid-template-columns: 1fr;
-    }
-
-    /* Slightly smaller buttons for cramped screens */
-    .btn {
-        padding: 8px 10px;
-        font-size: 0.85em;
-    }
+/* Cloud meta info (last save time) */
+.cloud-meta {
+    font-size: 0.75rem;
+    color: #777;
+    margin-bottom: 10px;
 }

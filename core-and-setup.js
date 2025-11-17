@@ -227,6 +227,9 @@ function scheduleCloudAutosave(reason = '') {
         try {
             await saveAppStateToFirestore();
             updateCloudSyncStatus('ok', 'Saved just now');
+            if (typeof updateLastCloudSaveDisplay === 'function') {
+                updateLastCloudSaveDisplay();
+            }
         } catch (err) {
             console.error('Autosave error:', err);
             updateCloudSyncStatus('error', 'Sync error');
@@ -241,6 +244,27 @@ function startCloudAutosaveHeartbeat() {
         scheduleCloudAutosave('heartbeat');
     }, 60000);
 }
+
+
+async function manualCloudSave() {
+    if (!isFirestoreReady()) {
+        alert('Cloud sync is not configured or available.');
+        return;
+    }
+    try {
+        updateCloudSyncStatus('saving', 'Saving…');
+        await saveAppStateToFirestore();
+        updateCloudSyncStatus('ok', 'Saved just now');
+        if (typeof updateLastCloudSaveDisplay === 'function') {
+            updateLastCloudSaveDisplay();
+        }
+    } catch (err) {
+        console.error('Manual cloud save error:', err);
+        updateCloudSyncStatus('error', 'Sync error');
+        alert('Could not save to cloud. Please check your connection and try again.');
+    }
+}
+
 
 // Simple in-memory history (undo) stack
 const HISTORY_LIMIT = 20;
@@ -407,6 +431,15 @@ async function loadAppStateFromFirestore() {
         Object.keys(dump).forEach(key => {
             localStorage.setItem(key, dump[key]);
         });
+        
+        if (data && data.updatedAt) {
+            try {
+                localStorage.setItem('lastCloudSaveTime', data.updatedAt);
+            } catch (e) {
+                console.warn('Could not persist lastCloudSaveTime from Firestore:', e);
+            }
+        }
+
         console.info('Loaded app state from Firestore.');
     } catch (err) {
         console.error('Error loading state from Firestore:', err);
@@ -421,13 +454,19 @@ async function saveAppStateToFirestore() {
     try {
         const snapshot = getAppStorageSnapshot();
         const docRef = window.db.collection(FIRESTORE_APPSTATE_COLLECTION).doc(FIRESTORE_DEFAULT_DOC_ID);
+        const nowIso = new Date().toISOString();
         await docRef.set(
             {
                 localStorageDump: snapshot,
-                updatedAt: new Date().toISOString()
+                updatedAt: nowIso
             },
             { merge: true }
         );
+        try {
+            localStorage.setItem('lastCloudSaveTime', nowIso);
+        } catch (e) {
+            console.warn('Could not persist lastCloudSaveTime locally:', e);
+        }
         console.info('Saved full app state to Firestore (default doc).');
     } catch (err) {
         console.error('Error saving state to Firestore:', err);
@@ -1025,19 +1064,6 @@ function loadDataForPeriod(period) {
         setDefaultOtDates();
     }
     // --- END MODIFIED LOGIC ---
-
-    // --- NEW: Sync OT calendar view to the OT start month ---
-    if (otCalendar) {
-        const otStartInput = document.getElementById('otStartDate');
-        if (otStartInput && otStartInput.value) {
-            const calendarDate = new Date(otStartInput.value + 'T00:00:00');
-            if (!isNaN(calendarDate.getTime())) {
-                calendarDate.setDate(1);
-                otCalendar.gotoDate(calendarDate);
-            }
-        }
-    }
-    // --- END NEW CODE ---
     
     if (salaryData.customPublicHolidays) {
         customHolidayPicker.setDate(salaryData.customPublicHolidays, false);

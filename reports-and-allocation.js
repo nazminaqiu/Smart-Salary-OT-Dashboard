@@ -1,4 +1,31 @@
 // --- REPORTS & MODALS ---
+
+function updateLastCloudSaveDisplay() {
+    const textEl = document.getElementById('lastCloudSaveText');
+    if (!textEl) return;
+
+    let iso = null;
+    try {
+        iso = localStorage.getItem('lastCloudSaveTime');
+    } catch (e) {
+        console.warn('Could not read lastCloudSaveTime from localStorage:', e);
+    }
+
+    if (!iso) {
+        textEl.textContent = 'never';
+        return;
+    }
+
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) {
+        textEl.textContent = 'unknown';
+        return;
+    }
+
+    textEl.textContent = d.toLocaleString();
+}
+
+
 function launchExportAsModal() {
     document.getElementById('export-as-modal').style.display = 'flex';
 }
@@ -1672,9 +1699,25 @@ function switchSubTab(subTabName, mainContainerId) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
     applySavedTheme();
-    await loadAppStateFromFirestore(); // Load cloud state on page load
+
+    if (typeof loadAppStateFromFirestore === 'function') {
+        // Try to load from Firestore in the background; do not block app boot
+        loadAppStateFromFirestore()
+            .then(() => {
+                console.info('Cloud state loaded; reinitializing from Firestore data.');
+                if (typeof initializeData === 'function') {
+                    initializeData();
+                }
+                if (typeof updateLastCloudSaveDisplay === 'function') {
+                    updateLastCloudSaveDisplay();
+                }
+            })
+            .catch(err => {
+                console.error('Error loading app state from Firestore:', err);
+            });
+    }
 
     document.getElementById('import-file').addEventListener('change', importData);
     document.getElementById('import-ot-file').addEventListener('change', importOTEntries);
@@ -1705,8 +1748,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     initializeData();
     validateExpenseForm();
 
-    // Start background autosave once everything is ready
     if (typeof startCloudAutosaveHeartbeat === 'function') {
         startCloudAutosaveHeartbeat();
+    }
+
+    if (typeof updateLastCloudSaveDisplay === 'function') {
+        updateLastCloudSaveDisplay();
     }
 });
