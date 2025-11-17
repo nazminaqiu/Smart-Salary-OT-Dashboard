@@ -195,7 +195,19 @@ const FIRESTORE_DEFAULT_DOC_ID = 'globalState'; // legacy single-doc backup
 const FIRESTORE_PAYPERIOD_COLLECTION = 'payPeriods';
 
 function isFirestoreReady() {
-    return typeof window !== 'undefined' && typeof window.db !== 'undefined' && window.db;
+    const ready = (
+        typeof window !== 'undefined' &&
+        typeof window.db !== 'undefined' &&
+        window.db
+    );
+
+    if (!ready) {
+        console.warn("[Cloud] Firestore NOT ready. window.db =", window && window.db);
+    } else {
+        console.info("[Cloud] Firestore is ready.");
+    }
+
+    return ready;
 }
 
 // --- Cloud sync UI, autosave & history helpers ---
