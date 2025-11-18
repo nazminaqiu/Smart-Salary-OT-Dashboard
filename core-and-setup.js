@@ -195,19 +195,7 @@ const FIRESTORE_DEFAULT_DOC_ID = 'globalState'; // legacy single-doc backup
 const FIRESTORE_PAYPERIOD_COLLECTION = 'payPeriods';
 
 function isFirestoreReady() {
-    const ready = (
-        typeof window !== 'undefined' &&
-        typeof window.db !== 'undefined' &&
-        window.db
-    );
-
-    if (!ready) {
-        console.warn("[Cloud] Firestore NOT ready. window.db =", window && window.db);
-    } else {
-        console.info("[Cloud] Firestore is ready.");
-    }
-
-    return ready;
+    return typeof window !== 'undefined' && typeof window.db !== 'undefined' && window.db;
 }
 
 // --- Cloud sync UI, autosave & history helpers ---
@@ -1307,13 +1295,18 @@ function initializeDatePickers() {
     };
 
     startDatePicker = flatpickr("#otStartDate", {
-        ...flatpickrConfig,
-        onChange: function(selectedDates, dateStr) {
-            if (endDatePicker.selectedDates.length > 0 && selectedDates[0] > endDatePicker.selectedDates[0]) {
-                endDatePicker.setDate(selectedDates[0], true);
-            }
-            endDatePicker.set('minDate', dateStr);
-            saveDataForPeriod(currentPayPeriod); // Save on change
+    ...flatpickrConfig,
+    onChange: function(selectedDates, dateStr) {
+        if (endDatePicker.selectedDates.length > 0 && selectedDates[0] > endDatePicker.selectedDates[0]) {
+            endDatePicker.setDate(selectedDates[0], true);
+        }
+        endDatePicker.set('minDate', dateStr);
+        saveDataForPeriod(currentPayPeriod); // Save on change
+
+        // NEW: immediately nudge the calendar to the new OT start month
+        if (typeof focusCalendarOnCurrentOTWindow === 'function') {
+            focusCalendarOnCurrentOTWindow();
+        }
         }
     });
     endDatePicker = flatpickr("#otEndDate", {
@@ -1432,4 +1425,279 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('budgetSnapshotSort').addEventListener('change', displayBudgetSnapshot);
 
     initializePercentageInputs();
+});
+
+// -----------------------------
+// Optional Firestore Cloud Backup
+// -----------------------------
+
+function isFirestoreReady() {
+    return typeof window !== 'undefined' && !!window.db;
+}
+
+// Build a snapshot of all relevant localStorage keys for this app.
+function getAppLocalStorageSnapshot() {
+    const dataToExport = {};
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (
+                key.startsWith('salaryData_') ||
+                key.startsWith('overtimeEntries_') ||
+                key.startsWith('expenses_') ||
+                key.startsWith('savingsGoalsData_') ||
+                key.startsWith('budgets_') ||
+                key === 'sinkingFunds' ||
+                key === 'savingsPots' ||
+                key === 'customCategories' ||
+                key === 'projectList' ||
+                key === 'recurringExpenses' ||
+                key === 'lastPayPeriod' ||
+                key === 'lastSeenPayPeriod'
+            ) {
+                dataToExport[key] = localStorage.getItem(key);
+            }
+        }
+    } catch (e) {
+        console.error('[Cloud] Failed to read localStorage for snapshot:', e);
+    }
+    return dataToExport;
+}
+
+function setCloudProgress(percent) {
+    const fill = document.getElementById('cloudProgressFill');
+    if (!fill) return;
+    const clamped = Math.max(0, Math.min(100, percent));
+    fill.style.width = clamped + '%';
+}
+
+function showCloudOverlay(text = 'Processing…', detail = 'This may take a few seconds…') {
+    const overlay = document.getElementById('cloudOverlay');
+    const t = document.getElementById('cloudOverlayText');
+    const d = document.getElementById('cloudOverlayDetail');
+
+    if (t) t.textContent = text;
+    if (d) d.textContent = detail;
+
+    setCloudProgress(10);
+
+    if (overlay) overlay.style.display = 'block';
+}
+
+function hideCloudOverlay() {
+    setCloudProgress(0);
+    const overlay = document.getElementById('cloudOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function updateCloudStatus(state, infoText) {
+    const badge = document.getElementById('cloudStatusBadge');
+    const sub = document.getElementById('cloudStatusSub');
+    if (!badge) return;
+
+    badge.classList.remove(
+        'cloud-badge-online',
+        'cloud-badge-offline',
+        'cloud-badge-working',
+        'cloud-badge-error'
+    );
+
+    let label = '';
+
+    switch (state) {
+        case 'online':
+            badge.classList.add('cloud-badge-online');
+            label = 'Cloud: Online';
+            break;
+        case 'working':
+            badge.classList.add('cloud-badge-working');
+            label = 'Cloud: Working…';
+            break;
+        case 'error':
+            badge.classList.add('cloud-badge-error');
+            label = 'Cloud: Error';
+            break;
+        default:
+            badge.classList.add('cloud-badge-offline');
+            label = 'Cloud: Offline';
+            break;
+    }
+
+    badge.textContent = label;
+    if (sub && infoText) {
+        sub.textContent = infoText;
+    }
+}
+
+// Save the last backup time locally for display.
+function setLastBackupTime(iso) {
+    try {
+        localStorage.setItem('lastCloudBackupTime', iso);
+    } catch (e) {
+        console.warn('[Cloud] Could not persist lastCloudBackupTime:', e);
+    }
+}
+
+function getLastBackupTime() {
+    try {
+        return localStorage.getItem('lastCloudBackupTime');
+    } catch (e) {
+        console.warn('[Cloud] Could not read lastCloudBackupTime:', e);
+        return null;
+    }
+}
+
+async function backupAllDataToCloud() {
+    if (!isFirestoreReady()) {
+        alert('Cloud backup is not available (Firestore offline).');
+        updateCloudStatus('offline', 'Cloud not connected.');
+        return;
+    }
+
+    const snapshot = getAppLocalStorageSnapshot();
+    const keys = snapshot ? Object.keys(snapshot) : [];
+    if (!keys.length) {
+        alert('No app data found to back up.');
+        return;
+    }
+
+    updateCloudStatus('working', 'Preparing backup…');
+    showCloudOverlay('Backing up data to cloud…', 'Collecting local data…');
+    setCloudProgress(25);
+
+    try {
+        const nowIso = new Date().toISOString();
+
+        setCloudProgress(60);
+
+        await window.db
+            .collection('backups')
+            .doc('latest')
+            .set(
+                {
+                    localStorageDump: snapshot,
+                    updatedAt: nowIso
+                },
+                { merge: true }
+            );
+
+        setCloudProgress(100);
+        hideCloudOverlay();
+
+        const niceTime = new Date(nowIso).toLocaleString();
+        setLastBackupTime(nowIso);
+        updateCloudStatus('online', 'Last backup: ' + niceTime);
+
+        if (typeof showToast === 'function') {
+            showToast('Cloud backup completed successfully!');
+        } else {
+            alert('Cloud backup completed successfully!');
+        }
+
+        console.info('[Cloud] Backup saved at', nowIso, 'with', keys.length, 'keys.');
+    } catch (e) {
+        console.error('[Cloud] Error saving backup:', e);
+        hideCloudOverlay();
+        updateCloudStatus('error', 'Last backup failed.');
+
+        if (typeof showToast === 'function') {
+            showToast('Cloud backup failed. Check console for details.');
+        } else {
+            alert('Cloud backup failed. Check console for details.');
+        }
+    }
+}
+
+async function restoreAllDataFromCloud() {
+    if (!isFirestoreReady()) {
+        alert('Cloud restore is not available (Firestore offline).');
+        updateCloudStatus('offline', 'Cloud not connected.');
+        return;
+    }
+
+    if (!confirm('This will overwrite local data with the latest cloud backup. Continue?')) {
+        return;
+    }
+
+    updateCloudStatus('working', 'Restoring backup…');
+    showCloudOverlay('Restoring data from cloud…', 'Fetching backup document…');
+    setCloudProgress(20);
+
+    try {
+        const docRef = window.db.collection('backups').doc('latest');
+        const snap = await docRef.get();
+
+        if (!snap.exists) {
+            hideCloudOverlay();
+            updateCloudStatus('online', 'No backup found yet.');
+            alert('No cloud backup was found.');
+            return;
+        }
+
+        setCloudProgress(50);
+
+        const data = snap.data();
+        const dump = data && data.localStorageDump;
+        const updatedAt = data && data.updatedAt;
+
+        if (!dump || typeof dump !== 'object') {
+            hideCloudOverlay();
+            updateCloudStatus('error', 'Backup invalid.');
+            alert('Cloud backup is empty or invalid.');
+            return;
+        }
+
+        // Write keys from backup into localStorage
+        Object.keys(dump).forEach(key => {
+            try {
+                localStorage.setItem(key, dump[key]);
+            } catch (e) {
+                console.warn('[Cloud] Failed to restore key', key, e);
+            }
+        });
+
+        setCloudProgress(100);
+        hideCloudOverlay();
+
+        if (updatedAt) {
+            setLastBackupTime(updatedAt);
+            const niceTime = new Date(updatedAt).toLocaleString();
+            updateCloudStatus('online', 'Restored from backup at ' + niceTime);
+        } else {
+            updateCloudStatus('online', 'Restored from cloud just now.');
+        }
+
+        if (typeof showToast === 'function') {
+            showToast('Cloud restore successful. Reloading…');
+        } else {
+            alert('Cloud restore successful. Reloading…');
+        }
+
+        setTimeout(() => window.location.reload(), 400);
+    } catch (e) {
+        console.error('[Cloud] Error loading backup from Firestore:', e);
+        hideCloudOverlay();
+        updateCloudStatus('error', 'Restore failed.');
+
+        if (typeof showToast === 'function') {
+            showToast('Cloud restore failed. Check console for details.');
+        } else {
+            alert('Cloud restore failed. Check console for details.');
+        }
+    }
+}
+
+// Initialise cloud status badge on load
+document.addEventListener('DOMContentLoaded', () => {
+    const online = isFirestoreReady();
+    const last = getLastBackupTime();
+
+    if (online && last) {
+        const niceTime = new Date(last).toLocaleString();
+        updateCloudStatus('online', 'Last backup: ' + niceTime);
+    } else if (online) {
+        updateCloudStatus('online', 'Ready for manual backup.');
+    } else {
+        updateCloudStatus('offline', 'Using local backup only.');
+    }
 });

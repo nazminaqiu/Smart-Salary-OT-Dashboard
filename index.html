@@ -63,30 +63,49 @@
 </head>
 <body>
     <div id="toast-notification" class="toast" style="display: none;"></div>
+    <!-- Cloud Operation Progress Overlay -->
+    <div id="cloudOverlay">
+        <div class="cloud-overlay-card">
+            <div id="cloudOverlayText" style="font-size:1.1rem; margin-bottom:6px;">
+                Processing…
+            </div>
+            <div class="cloud-spinner"></div>
+            <div class="cloud-progress-bar">
+                <div id="cloudProgressFill" class="cloud-progress-fill"></div>
+            </div>
+            <div id="cloudOverlayDetail"
+                 style="margin-top:8px;font-size:0.8rem;opacity:0.8;">
+                This may take a few seconds…
+            </div>
+        </div>
+    </div>
     <input type="file" id="import-file" accept=".json" style="display: none;">
     <input type="file" id="import-ot-file" accept=".json" style="display: none;"> <div class="container">
         <div class="header">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <h1>💼 Advanced Smart Salary & Overtime Tracker</h1>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div id="cloudSyncStatus" class="cloud-sync-status cloud-offline" title="Cloud sync status">
-                        <span class="cloud-sync-dot"></span>
-                        <span class="cloud-sync-label">Offline</span>
-                    </div>
-                    <button class="btn btn-secondary" onclick="manualCloudSave()" title="Save to cloud now">💾</button>
-                    <button class="btn btn-secondary" onclick="undoLastChange()" title="Undo last change">↩</button>
-                    <button class="btn btn-secondary" onclick="openSettingsModal()" title="Settings &amp; data tools">⚙</button>
+                <div style="display:flex; align-items: center; gap: 10px;">
+                    <!-- Keep only the theme toggle in the header -->
                     <button class="btn btn-secondary" onclick="toggleTheme()" title="Toggle Theme">🌓</button>
                 </div>
-</div>
-            </div>
-            <div class="cloud-meta">
-                Last cloud save: <span id="lastCloudSaveText">never</span>
-            </div>
+                </div>
+                </div>
+                <!-- Old autosave UI (cloud pill, manual save, undo, settings, "Last cloud save") removed.
+                We now rely on the buttons below: Backup to Cloud / Restore from Cloud + JSON import/export. -->
             <div class="btn-group">
                 <button class="btn btn-warning" onclick="launchSimulator()">シ What-If Simulator</button>
-                <button class="btn btn-info" onclick="triggerImport()">📥 Import Data</button>
+                <button class="btn btn-info" onclick="triggerImport()">📥 Import / Restore (JSON)</button>
                 <button class="btn btn-secondary" onclick="launchExportAsModal()">📤 Export As...</button>
+                <button class="btn btn-outline" onclick="backupAllDataToCloud()">☁ Backup to Cloud</button>
+                <button class="btn btn-outline" onclick="restoreAllDataFromCloud()">☁ Restore from Cloud</button>
+            </div>
+            <div class="cloud-status-wrapper">
+                <span id="cloudStatusBadge" class="cloud-badge cloud-badge-offline">
+                    Cloud: Offline
+                </span>
+                <span id="cloudStatusSub" class="cloud-status-sub">
+                    Using local backup only
+                </span>
             </div>
             <div class="global-settings">
                 <div class="form-group">
@@ -1267,38 +1286,27 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
 
     <!-- Firebase (v8-style SDK) -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
-<script>
-  (function () {
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-    const firebaseConfig = {
-      apiKey: "AIzaSyDmK3rDG59qi7hX4GgvwliV6r3Lr1Wee98",
-      authDomain: "salary-tracker-e3d18.firebaseapp.com",
-      projectId: "salary-tracker-e3d18",
-      storageBucket: "salary-tracker-e3d18.firebasestorage.app",
-      messagingSenderId: "745927120934",
-      appId: "1:745927120934:web:9717a8179f24001b842ee7",
-      measurementId: "G-21JPCBWM1Q"
-    };
+    <script>
+      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+      const firebaseConfig = {
+        apiKey: "AIzaSyDmK3rDG59qi7hX4GgvwliV6r3Lr1Wee98",
+        authDomain: "salary-tracker-e3d18.firebaseapp.com",
+        projectId: "salary-tracker-e3d18",
+        storageBucket: "salary-tracker-e3d18.firebasestorage.app",
+        messagingSenderId: "745927120934",
+        appId: "1:745927120934:web:9717a8179f24001b842ee7",
+        measurementId: "G-21JPCBWM1Q"
+      };
 
-    try {
-      if (!window.firebase || !firebase.firestore) {
-        console.warn('Firebase SDK not loaded; cloud sync disabled.');
-        window.db = null;
-        return;
-      }
-
+      // Initialize Firebase + Firestore
       firebase.initializeApp(firebaseConfig);
+
+      // Make Firestore available globally
       window.db = firebase.firestore();
-      console.info('Firebase initialised, Firestore ready:', !!window.db);
-    } catch (e) {
-      console.error('Firebase init failed; cloud sync disabled:', e);
-      window.db = null;
-    }
-  })();
-</script>
+    </script>
     
     <script>
         /* SCRIPT FOR CLOUD MENU DROPDOWN */

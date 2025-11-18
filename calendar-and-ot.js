@@ -56,6 +56,20 @@ function formatOTEntriesForCalendar() {
     }));
 }
 
+// NEW: keep calendar centered on the current OT window
+function focusCalendarOnCurrentOTWindow() {
+    if (!otCalendar || typeof getCurrentOTWindow !== 'function') return;
+
+    const win = getCurrentOTWindow();
+    if (!win || !win.start) return;
+
+    const start = new Date(win.start);
+    if (isNaN(start.getTime())) return;
+
+    // This tells FullCalendar to show the month that contains the OT start date
+    otCalendar.gotoDate(start);
+}
+
 function adjustOTFromCalendar(entryId, amount) {
     const entryIndex = overtimeEntries.findIndex(e => e.id === entryId);
     if (entryIndex === -1) return;
@@ -606,6 +620,8 @@ function getDayType(entry) {
 function displayOTEntries() {
     if (otCalendar) {
         otCalendar.refetchEvents();
+        // NEW: follow the OT window (month of OT start date)
+        focusCalendarOnCurrentOTWindow();
     }
     
     let totalHours = 0, totalAmount = 0;
