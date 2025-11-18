@@ -189,10 +189,9 @@ let showArchived = false;
 // Firestore collections/docs to store this app's data.
 // With no authentication, everyone using this app will share the same documents.
 // Change these if you want separate docs per user/profile.
-const FIRESTORE_APPSTATE_COLLECTION = 'appState';
-const FIRESTORE_GLOBAL_DOC_ID = 'globalState';
-const FIRESTORE_DEFAULT_DOC_ID = 'globalState'; // legacy single-doc backup
-const FIRESTORE_PAYPERIOD_COLLECTION = 'payPeriods';
+// Single source of truth in Firestore for full app state
+const FIRESTORE_BACKUP_COLLECTION = 'backups';
+const FIRESTORE_BACKUP_DOC_ID = 'latest';
 
 function isFirestoreReady() {
     return typeof window !== 'undefined' && typeof window.db !== 'undefined' && window.db;
@@ -210,61 +209,6 @@ function updateCloudSyncStatus(state, label) {
         labelSpan.textContent = label;
     }
 }
-
-let cloudSaveTimer = null;
-let cloudSaveIntervalId = null;
-
-function scheduleCloudAutosave(reason = '') {
-    if (!isFirestoreReady()) {
-        updateCloudSyncStatus('offline', 'Offline');
-        return;
-    }
-    if (cloudSaveTimer) {
-        clearTimeout(cloudSaveTimer);
-    }
-    updateCloudSyncStatus('saving', 'Saving…');
-    cloudSaveTimer = setTimeout(async () => {
-        try {
-            await saveAppStateToFirestore();
-            updateCloudSyncStatus('ok', 'Saved just now');
-            if (typeof updateLastCloudSaveDisplay === 'function') {
-                updateLastCloudSaveDisplay();
-            }
-        } catch (err) {
-            console.error('Autosave error:', err);
-            updateCloudSyncStatus('error', 'Sync error');
-        }
-    }, 1500);
-}
-
-function startCloudAutosaveHeartbeat() {
-    if (!isFirestoreReady()) return;
-    if (cloudSaveIntervalId) return; // already running
-    cloudSaveIntervalId = setInterval(() => {
-        scheduleCloudAutosave('heartbeat');
-    }, 60000);
-}
-
-
-async function manualCloudSave() {
-    if (!isFirestoreReady()) {
-        alert('Cloud sync is not configured or available.');
-        return;
-    }
-    try {
-        updateCloudSyncStatus('saving', 'Saving…');
-        await saveAppStateToFirestore();
-        updateCloudSyncStatus('ok', 'Saved just now');
-        if (typeof updateLastCloudSaveDisplay === 'function') {
-            updateLastCloudSaveDisplay();
-        }
-    } catch (err) {
-        console.error('Manual cloud save error:', err);
-        updateCloudSyncStatus('error', 'Sync error');
-        alert('Could not save to cloud. Please check your connection and try again.');
-    }
-}
-
 
 // Simple in-memory history (undo) stack
 const HISTORY_LIMIT = 20;
@@ -414,62 +358,50 @@ async function loadAppStateFromFirestore() {
         console.warn('Firestore not ready; skipping cloud load.');
         return;
     }
+
     try {
-        const docRef = window.db.collection(FIRESTORE_APPSTATE_COLLECTION).doc(FIRESTORE_DEFAULT_DOC_ID);
+        const docRef = window.db
+            .collection(FIRESTORE_BACKUP_COLLECTION)
+            .doc(FIRESTORE_BACKUP_DOC_ID);
+
         const snap = await docRef.get();
         if (!snap.exists) {
-            console.info('No Firestore state found yet.');
-            return;
-        }
-        const data = snap.data();
-        if (!data || !data.localStorageDump) {
-            console.info('Firestore document exists but has no localStorageDump field.');
+            console.info('No cloud backup found (backups/latest). Starting with local data only.');
             return;
         }
 
-        const dump = data.localStorageDump;
+        const data = snap.data();
+        if (!data || !data.localStorageDump) {
+            console.info('Cloud backup exists but has no localStorageDump field.');
+            return;
+        }
+
+        const dump = data.localStorageDump || {};
+
+        // Hydrate localStorage with everything from the dump
         Object.keys(dump).forEach(key => {
-            localStorage.setItem(key, dump[key]);
+            try {
+                localStorage.setItem(key, dump[key]);
+            } catch (e) {
+                console.warn('Could not write key from cloud dump into localStorage:', key, e);
+            }
         });
-        
-        if (data && data.updatedAt) {
+
+        // Track last backup time for the status UI
+        if (data.updatedAt) {
             try {
                 localStorage.setItem('lastCloudSaveTime', data.updatedAt);
+                if (typeof setLastBackupTime === 'function') {
+                    setLastBackupTime(data.updatedAt);
+                }
             } catch (e) {
                 console.warn('Could not persist lastCloudSaveTime from Firestore:', e);
             }
         }
 
-        console.info('Loaded app state from Firestore.');
+        console.info('Loaded app state from Firestore backup (backups/latest).');
     } catch (err) {
-        console.error('Error loading state from Firestore:', err);
-    }
-}
-
-// Save entire localStorage-backed app state to the legacy single Firestore document.
-async function saveAppStateToFirestore() {
-    if (!isFirestoreReady()) {
-        return;
-    }
-    try {
-        const snapshot = getAppStorageSnapshot();
-        const docRef = window.db.collection(FIRESTORE_APPSTATE_COLLECTION).doc(FIRESTORE_DEFAULT_DOC_ID);
-        const nowIso = new Date().toISOString();
-        await docRef.set(
-            {
-                localStorageDump: snapshot,
-                updatedAt: nowIso
-            },
-            { merge: true }
-        );
-        try {
-            localStorage.setItem('lastCloudSaveTime', nowIso);
-        } catch (e) {
-            console.warn('Could not persist lastCloudSaveTime locally:', e);
-        }
-        console.info('Saved full app state to Firestore (default doc).');
-    } catch (err) {
-        console.error('Error saving state to Firestore:', err);
+        console.error('Error loading backup from Firestore:', err);
     }
 }
 
@@ -1106,9 +1038,7 @@ function saveDataForPeriod(period) {
     localStorage.setItem(`savingsGoalsData_${period}`, JSON.stringify(savingsGoalsData));
     localStorage.setItem(`budgets_${period}`, JSON.stringify(budgets));
     localStorage.setItem('sinkingFunds', JSON.stringify(sinkingFunds));
-    localStorage.setItem('savingsPots', JSON.stringify(savingsPots));
-
-    scheduleCloudAutosave('saveDataForPeriod');
+    localStorage.setItem('savingsPots', JSON.stringify(savingsPots));  
 }
 
 function updateAllDisplays() {
@@ -1379,10 +1309,9 @@ function closeSettingsModal() {
 document.addEventListener('DOMContentLoaded', function() {
     applySavedTheme();
 
-    const startApp = () => {
+        const startApp = () => {
         initializeData();
         validateExpenseForm();
-        startCloudAutosaveHeartbeat();
         updateLastCloudSaveDisplay();
     };
 
